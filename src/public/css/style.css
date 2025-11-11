@@ -1,0 +1,22 @@
+.progress-mini {
+  margin-top: 0.5rem;
+  position: relative;
+  width: 100%;
+  height: 8px;
+  border-radius: 9999px;
+  overflow: hidden;
+  background: rgba(148, 163, 184, 0.35);
+}
+
+.progress-mini-fill {
+  position: absolute;
+  inset: 0;
+  width: 40%;
+  background-image: linear-gradient(90deg, rgba(250, 204, 21, 0.9), rgba(79, 70, 229, 0.9));
+  animation: progressMove 1.2s linear infinite;
+}
+
+@keyframes progressMove {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}

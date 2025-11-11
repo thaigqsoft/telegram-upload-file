@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telegram File Upload Dashboard</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+</head>
+<body class="bg-slate-100 text-slate-800">
+    <div class="mx-auto flex min-h-screen max-w-7xl flex-col px-4 py-10 sm:px-6 lg:px-8">
+        <header class="mb-10 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+                <h1 class="text-3xl font-bold tracking-tight text-slate-900">Telegram Upload Studio</h1>
+                <p class="mt-1 text-sm text-slate-600">Upload large files to Telegram, track progress in real-time, and manage chat mappings with ease.</p>
+            </div>
+            <nav class="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <a href="/docs.html" target="_blank" class="inline-flex items-center justify-center rounded-xl border border-transparent bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-600 shadow-sm transition hover:bg-indigo-100 focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2">API &amp; User Guide</a>
+                <button id="admin-logout-btn" class="inline-flex items-center justify-center rounded-xl border border-transparent bg-white px-4 py-2 text-sm font-semibold text-slate-600 shadow-sm transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-200 focus:ring-offset-2">ออกจากระบบผู้ดูแล</button>
+                <button id="logout-btn" class="inline-flex hidden items-center justify-center rounded-xl border border-transparent bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:ring-offset-2">ล้างการเชื่อมต่อ Telegram</button>
+            </nav>
+        </header>
+
+        <main class="flex-1">
+            <!-- Login Section -->
+            <section id="login-section" class="grid gap-6 lg:grid-cols-2">
+                <div class="rounded-2xl bg-white p-8 shadow-lg shadow-slate-200/60">
+                    <div class="mb-6 flex items-center gap-3">
+                        <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-600">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 5.25C3 4.007 4.007 3 5.25 3h13.5C19.993 3 21 4.007 21 5.25v13.5A2.25 2.25 0 0 1 18.75 21H5.25A2.25 2.25 0 0 1 3 18.75V5.25ZM7.5 8.25h9M7.5 12h6"/></svg>
+                        </div>
+                        <div>
+                            <h2 class="text-xl font-semibold text-slate-900">Authenticate with Telegram</h2>
+                            <p class="text-sm text-slate-500">Connect your Telegram account to start uploading files.</p>
+                        </div>
+                    </div>
+                    <div class="space-y-5">
+                        <div class="grid gap-4 sm:grid-cols-2">
+                            <div>
+                                <label for="api-id" class="mb-2 block text-sm font-medium text-slate-600">Telegram API ID</label>
+                                <input id="api-id" type="text" placeholder="e.g. 123456" class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-medium text-slate-700 shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/40">
+                            </div>
+                            <div>
+                                <label for="api-hash" class="mb-2 block text-sm font-medium text-slate-600">Telegram API Hash</label>
+                                <input id="api-hash" type="password" placeholder="Enter API Hash" class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-medium text-slate-700 shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/40">
+                            </div>
+                        </div>
+                        <div>
+                            <label for="phone-number" class="mb-2 block text-sm font-medium text-slate-600">Phone Number</label>
+                            <input id="phone-number" type="text" placeholder="e.g. +66912345678" class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-medium text-slate-700 shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/40">
+                        </div>
+                        <button id="login-btn" class="w-full rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2">Send Verification Code</button>
+                        <div id="code-section" class="space-y-4 rounded-xl bg-slate-50 p-4" style="display: none;">
+                            <div>
+                                <label for="code" class="mb-2 block text-sm font-medium text-slate-600">Verification Code</label>
+                                <input id="code" type="text" placeholder="Code from Telegram" class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-medium text-slate-700 shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/40">
+                            </div>
+                            <button id="verify-btn" class="w-full rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:ring-offset-2">Verify &amp; Connect</button>
+                        </div>
+                        <div id="login-message" class="hidden"></div>
+                    </div>
+                </div>
+                <div class="hidden rounded-2xl bg-gradient-to-br from-indigo-600 via-purple-600 to-slate-900 p-8 text-white shadow-xl shadow-indigo-500/30 lg:flex lg:flex-col lg:justify-between">
+                    <div class="space-y-6">
+                        <h3 class="text-2xl font-semibold">How it works</h3>
+                        <ul class="space-y-4 text-sm text-indigo-100">
+                            <li class="flex items-start gap-3">
+                                <span class="mt-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-white/20 text-xs font-semibold">1</span>
+                                <span>Authenticate your Telegram account securely.</span>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <span class="mt-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-white/20 text-xs font-semibold">2</span>
+                                <span>Upload large files directly from this dashboard or via API.</span>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <span class="mt-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-white/20 text-xs font-semibold">3</span>
+                                <span>Track progress in real-time and manage chat mappings with ease.</span>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="rounded-xl bg-white/10 p-6 backdrop-blur">
+                        <p class="text-sm text-indigo-100">Need help getting started? Open the documentation for API examples and setup guide.</p>
+                        <a href="/docs.html" target="_blank" class="mt-4 inline-flex items-center justify-center rounded-xl bg-white px-4 py-2 text-sm font-semibold text-indigo-600 shadow-sm transition hover:bg-indigo-50">View Docs</a>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Dashboard Section -->
+            <section id="dashboard-section" class="hidden space-y-10">
+                <div class="grid gap-6 lg:grid-cols-3">
+                    <div class="rounded-2xl bg-white p-6 shadow-lg shadow-slate-200/60 lg:col-span-2">
+                        <h2 class="text-lg font-semibold text-slate-900">Upload a File</h2>
+                        <p class="mt-1 text-sm text-slate-500">Fill in the details and send your file directly to Telegram.</p>
+                        <form id="upload-form" enctype="multipart/form-data" class="mt-6 space-y-5">
+                            <div>
+                                <label for="file" class="mb-2 block text-sm font-medium text-slate-600">Select File</label>
+                                <input id="file" name="file" type="file" class="block w-full cursor-pointer rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-600 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/40">
+                            </div>
+                            <div>
+                                <label for="upload-token" class="mb-2 block text-sm font-medium text-slate-600">Upload Token</label>
+                                <input id="upload-token" name="token_upload" type="password" autocomplete="off" placeholder="Enter secure upload token" class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-medium text-slate-700 shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/40" required>
+                                <p class="mt-1 text-xs text-slate-400">จำเป็นต้องกรอก TOKEN_UPLOAD ที่กำหนดไว้ในเซิร์ฟเวอร์ เพื่อความปลอดภัย</p>
+                            </div>
+                            <div class="grid gap-4 sm:grid-cols-2">
+                                <div>
+                                    <label for="chat-id" class="mb-2 block text-sm font-medium text-slate-600">Chat ID</label>
+                                    <input id="chat-id" name="chat_id" type="text" placeholder="e.g. -1001234567890" class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-medium text-slate-700 shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/40" required>
+                                </div>
+                                <div>
+                                    <label for="chat-name" class="mb-2 block text-sm font-medium text-slate-600">Chat Name (optional)</label>
+                                    <input id="chat-name" name="chat_name" type="text" placeholder="Friendly name" class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-medium text-slate-700 shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/40">
+                                </div>
+                            </div>
+                            <div class="grid gap-4 sm:grid-cols-2">
+                                <div>
+                                    <label for="message-thread-id" class="mb-2 block text-sm font-medium text-slate-600">Message Thread ID (optional)</label>
+                                    <input id="message-thread-id" name="message_thread_id" type="text" placeholder="Topic ID" class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-medium text-slate-700 shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/40">
+                                </div>
+                                <div>
+                                    <label for="caption" class="mb-2 block text-sm font-medium text-slate-600">Caption (optional, max 1024 chars)</label>
+                                    <textarea id="caption" name="caption" rows="3" placeholder="Add a caption to send with the file" class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-medium text-slate-700 shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/40"></textarea>
+                                </div>
+                            </div>
+                            <button type="submit" class="inline-flex w-full items-center justify-center rounded-xl border border-transparent bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2 sm:w-auto">Upload to Telegram</button>
+                        </form>
+                    </div>
+                    <div id="upload-progress-card" class="hidden rounded-2xl bg-slate-900 text-white shadow-lg shadow-indigo-500/30">
+                        <div class="px-6 py-5">
+                            <div class="flex items-center justify-between">
+                                <h3 class="text-lg font-semibold">Upload Progress</h3>
+                                <span id="upload-progress-label" class="text-sm font-semibold uppercase tracking-wider text-indigo-200">0%</span>
+                            </div>
+                            <div class="mt-6" id="upload-progress-chart"></div>
+                            <p id="upload-progress-text" class="mt-6 text-xs uppercase tracking-[0.25em] text-indigo-200">Waiting for upload...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid gap-6 lg:grid-cols-2">
+                    <div class="rounded-2xl bg-white p-6 shadow-lg shadow-slate-200/60">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-lg font-semibold text-slate-900">File Status Overview</h3>
+                            <span class="text-xs font-medium uppercase tracking-widest text-slate-400">Real-time</span>
+                        </div>
+                        <div class="mt-6" id="status-chart"></div>
+                    </div>
+                    <div class="rounded-2xl bg-white p-6 shadow-lg shadow-slate-200/60">
+                        <h3 class="text-lg font-semibold text-slate-900">Chat Mappings</h3>
+                        <p class="mt-1 text-sm text-slate-500">Add friendly names for Chat IDs and manage them quickly.</p>
+                        <form id="chat-mapping-form" class="mt-4 grid gap-4 lg:grid-cols-7">
+                            <div class="lg:col-span-3">
+                                <label for="mapping-chat-id" class="mb-2 block text-sm font-medium text-slate-600">Chat ID</label>
+                                <input id="mapping-chat-id" name="chat_id" type="text" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/40" required>
+                            </div>
+                            <div class="lg:col-span-3">
+                                <label for="mapping-chat-name" class="mb-2 block text-sm font-medium text-slate-600">Chat Name</label>
+                                <input id="mapping-chat-name" name="chat_name" type="text" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/40" required>
+                            </div>
+                            <div class="flex items-end gap-2 lg:col-span-1">
+                                <button id="mapping-submit-btn" type="submit" class="inline-flex w-full items-center justify-center rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:ring-offset-2">Add Mapping</button>
+                                <button id="cancel-mapping-btn" type="button" class="hidden rounded-xl bg-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-300">Cancel</button>
+                            </div>
+                        </form>
+                        <div id="mapping-message" class="mt-3 hidden"></div>
+                        <div class="mt-6 flex items-center justify-between">
+                            <span class="text-sm font-medium text-slate-500">Mappings</span>
+                            <button id="refresh-mappings" class="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-500 transition hover:bg-slate-50">Refresh</button>
+                        </div>
+                        <div class="mt-4 overflow-hidden rounded-xl border border-slate-200" id="chat-mappings-list">
+                            <p class="p-4 text-sm text-slate-500">Loading chat mappings...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="rounded-2xl bg-white p-6 shadow-lg shadow-slate-200/60">
+                    <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                        <div>
+                            <h3 class="text-lg font-semibold text-slate-900">Uploaded Files</h3>
+                            <p class="text-sm text-slate-500">Review upload history, verify integrity, or remove files.</p>
+                        </div>
+                        <button id="refresh-files" class="inline-flex items-center justify-center rounded-xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-50">Refresh</button>
+                    </div>
+                    <div class="mt-6 overflow-hidden rounded-xl border border-slate-200" id="files-list">
+                        <p class="p-4 text-sm text-slate-500">Loading files...</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="js/dashboard.js"></script>
+</body>
+</html>

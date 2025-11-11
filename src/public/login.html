@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>เข้าสู่ระบบ · Telegram Upload Studio</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="flex min-h-screen items-center justify-center bg-slate-100 px-4">
+    <div class="w-full max-w-md">
+        <div class="rounded-3xl bg-white p-8 shadow-xl shadow-indigo-100/70">
+            <div class="mb-6 text-center">
+                <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-indigo-500/10 text-indigo-600">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 0h10.5c.621 0 1.125.504 1.125 1.125v8.25c0 .621-.504 1.125-1.125 1.125H6.75A1.125 1.125 0 0 1 5.625 19.875v-8.25c0-.621.504-1.125 1.125-1.125Z"/>
+                    </svg>
+                </div>
+                <h1 class="text-2xl font-bold text-slate-900">เข้าสู่ระบบ</h1>
+                <p class="mt-2 text-sm text-slate-500">กรอกชื่อผู้ใช้และรหัสผ่านสำหรับผู้ดูแลระบบเพื่อเข้าถึงแดชบอร์ดแบบปลอดภัย</p>
+            </div>
+            <form method="POST" action="/auth/login" class="space-y-5">
+                <div>
+                    <label for="username" class="mb-2 block text-sm font-semibold text-slate-600">Username</label>
+                    <input id="username" name="username" type="text" required autofocus class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-medium text-slate-700 shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/40">
+                </div>
+                <div>
+                    <label for="password" class="mb-2 block text-sm font-semibold text-slate-600">Password</label>
+                    <input id="password" name="password" type="password" required class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-medium text-slate-700 shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/40">
+                </div>
+                <input type="hidden" name="redirect" value="/">
+                <button type="submit" class="inline-flex w-full items-center justify-center rounded-xl border border-transparent bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2">เข้าสู่ Dashboard</button>
+            </form>
+            <p id="login-message" class="mt-4 hidden rounded-xl border border-rose-100 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-600"></p>
+        </div>
+        <p class="mt-6 text-center text-xs text-slate-400">Telegram Upload Studio &middot; Secure Admin Login</p>
+    </div>
+    <script>
+        (function () {
+            const messageEl = document.getElementById('login-message');
+            const params = new URLSearchParams(window.location.search);
+            if (!messageEl) return;
+            if (params.get('error') === '1') {
+                messageEl.textContent = 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง';
+                messageEl.classList.remove('hidden');
+            } else if (params.get('loggedOut') === '1') {
+                messageEl.textContent = 'ออกจากระบบเรียบร้อยแล้ว';
+                messageEl.classList.remove('hidden');
+                messageEl.classList.remove('text-rose-600', 'bg-rose-50', 'border-rose-100');
+                messageEl.classList.add('bg-emerald-50', 'border-emerald-100', 'text-emerald-600');
+            }
+        })();
+    </script>
+</body>
+</html>
+

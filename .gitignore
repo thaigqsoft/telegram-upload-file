@@ -1,0 +1,15 @@
+.DS_Store
+node_modules/
+uploads/
+database/*.db
+database/*.sqlite
+.env
+*.log
+pm2-logs/
+coverage/
+tmp/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+database/app.db
+node_modules/.package-lock.json

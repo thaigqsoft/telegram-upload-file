@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telegram Upload System Documentation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="bg-slate-100 text-slate-800">
+    <div class="mx-auto flex min-h-screen max-w-5xl flex-col px-4 py-10 sm:px-6 lg:px-8">
+        <header class="mb-10 space-y-3 text-center">
+            <h1 class="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">Telegram Upload Studio · Docs</h1>
+            <p class="text-sm leading-relaxed text-slate-600 sm:text-base">
+                คู่มือการใช้งานและ API สำหรับระบบอัปโหลดไฟล์ MTProto ที่มาพร้อมแดชบอร์ดแบบ Tailwind + ApexCharts
+            </p>
+        </header>
+
+        <main class="flex-1 space-y-8">
+            <section class="rounded-3xl bg-white p-8 shadow-xl shadow-indigo-100/60">
+                <h2 class="text-2xl font-semibold text-slate-900">ภาพรวมระบบ</h2>
+                <p class="mt-4 text-sm leading-6 text-slate-600">
+                    ระบบนี้ออกแบบมาเพื่อให้คุณอัปโหลดไฟล์ขนาดใหญ่ (≈2GB) ไปยัง Telegram ผ่าน MTProto API พร้อมแดชบอร์ดพาสเทลที่ดูแลไฟล์, สถานะ, และการ mapping ของห้องปลายทางแบบเรียลไทม์
+                </p>
+                <p class="mt-3 text-xs text-slate-400">* แทนที่ <code>${TOKEN_UPLOAD}</code> ด้วยค่าโทเคนจริงจาก environment ของเซิร์ฟเวอร์</p>
+                <div class="mt-6 grid gap-4 sm:grid-cols-2">
+                    <div class="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                        <h3 class="text-sm font-semibold uppercase tracking-wide text-slate-500">UI Highlights</h3>
+                        <ul class="mt-3 space-y-2 text-sm text-slate-600">
+                            <li class="flex gap-2">
+                                <span class="mt-1 h-1.5 w-1.5 rounded-full bg-indigo-400"></span>
+                                แดชบอร์ดใช้ Tailwind CSS พร้อมธีมพาสเทล
+                            </li>
+                            <li class="flex gap-2">
+                                <span class="mt-1 h-1.5 w-1.5 rounded-full bg-indigo-400"></span>
+                                กราฟสถานะและความคืบหน้าด้วย ApexCharts (Bar + Donut)
+                            </li>
+                            <li class="flex gap-2">
+                                <span class="mt-1 h-1.5 w-1.5 rounded-full bg-indigo-400"></span>
+                                Progress bar แบบมีเลขเปอร์เซ็นต์อัปเดตสด
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                        <h3 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Backend Capability</h3>
+                        <ul class="mt-3 space-y-2 text-sm text-slate-600">
+                            <li class="flex gap-2">
+                                <span class="mt-1 h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
+                                เก็บ <code class="rounded bg-slate-900/5 px-2 py-0.5 text-xs font-semibold">STRING_SESSION</code> ใน SQLite
+                            </li>
+                            <li class="flex gap-2">
+                                <span class="mt-1 h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
+                                REST API สำหรับอัปโหลดและจัดการไฟล์ได้จากระบบภายนอก
+                            </li>
+                            <li class="flex gap-2">
+                                <span class="mt-1 h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
+                                รองรับ <code class="rounded bg-slate-900/5 px-2 py-0.5 text-xs font-semibold">message_thread_id</code> สำหรับ topic ใน supergroup
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <section class="rounded-3xl bg-white p-8 shadow-lg shadow-slate-200/60">
+                <h2 class="text-2xl font-semibold text-slate-900">เริ่มต้นใช้งาน (Login Flow)</h2>
+                <ol class="mt-4 space-y-3 text-sm leading-6 text-slate-600">
+                    <li>เปิด <code class="rounded bg-slate-900/5 px-2 py-0.5 text-xs font-semibold">http://HOST:PORT/login</code> แล้วเข้าสู่ระบบด้วย <code>ADMIN_USERNAME</code> / <code>ADMIN_PASSWORD</code></li>
+                    <li>หลังจากเข้าสู่ระบบสำเร็จ ระบบจะพามาที่แดชบอร์ดหลัก</li>
+                    <li>กรอก Telegram API ID, API Hash และเบอร์โทรศัพท์ในฟอร์ม Tailwind</li>
+                    <li>กด <strong>Send Verification Code</strong> เพื่อให้ระบบส่งโค้ดผ่าน Telegram</li>
+                    <li>ใส่รหัสที่ได้รับแล้วกด <strong>Verify &amp; Connect</strong></li>
+                    <li>ระบบจะบันทึก <code class="rounded bg-slate-900/5 px-2 py-0.5 text-xs font-semibold">STRING_SESSION</code> ลงฐานข้อมูลและเปิดแดชบอร์ดทันที</li>
+                </ol>
+                <p class="mt-4 text-sm leading-6 text-slate-500">
+                    ใช้ปุ่ม <strong>ล้างการเชื่อมต่อ Telegram</strong> หรือเรียก <code class="rounded bg-slate-900/5 px-2 py-0.5 text-xs font-semibold">POST /api/auth/logout</code> เพื่อเคลียร์ session ออกจาก SQLite และตัดการเชื่อมต่อ Telegram client
+                </p>
+            </section>
+
+            <section class="rounded-3xl bg-white p-8 shadow-lg shadow-slate-200/60">
+                <h2 class="text-2xl font-semibold text-slate-900">Authentication API</h2>
+                <div class="mt-6 space-y-6">
+                    <div>
+                        <h3 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Send login code</h3>
+<pre class="mt-3 overflow-x-auto rounded-2xl bg-slate-900 p-4 text-xs text-slate-100"><code>POST /api/auth/send-code
+Content-Type: application/json
+{
+  "api_id": "YOUR_API_ID",
+  "api_hash": "YOUR_API_HASH",
+  "phone_number": "+123456789"
+}</code></pre>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Confirm code &amp; persist session</h3>
+<pre class="mt-3 overflow-x-auto rounded-2xl bg-slate-900 p-4 text-xs text-slate-100"><code>POST /api/auth/confirm-code
+Content-Type: application/json
+{
+  "api_id": "YOUR_API_ID",
+  "api_hash": "YOUR_API_HASH",
+  "phone_number": "+123456789",
+  "code": "12345"
+}</code></pre>
+                    </div>
+                </div>
+                <ul class="mt-4 space-y-2 text-sm text-slate-600">
+                    <li><code class="rounded bg-slate-900/5 px-2 py-0.5 text-xs font-semibold">GET /api/auth/session</code> – ตรวจสอบ session ปัจจุบัน</li>
+                    <li><code class="rounded bg-slate-900/5 px-2 py-0.5 text-xs font-semibold">DELETE /api/auth/session</code> – ลบ session ทั้งหมด</li>
+                    <li><code class="rounded bg-slate-900/5 px-2 py-0.5 text-xs font-semibold">GET /api/auth/test</code> – ทดสอบ MTProto client</li>
+                </ul>
+            </section>
+
+            <section class="rounded-3xl bg-white p-8 shadow-lg shadow-slate-200/60">
+                <h2 class="text-2xl font-semibold text-slate-900">Upload API</h2>
+<pre class="mt-4 overflow-x-auto rounded-2xl bg-slate-900 p-4 text-xs text-slate-100"><code>POST /api/upload
+Content-Type: multipart/form-data
+
+Fields:
+- file: ไฟล์สำหรับอัปโหลด (สูงสุด ~2GB)
+- chat_id: ปลายทาง (user / group / channel / supergroup)
+- token_upload: โทเคนลับที่ต้องตรงกับค่าใน environment (`TOKEN_UPLOAD`)
+- chat_name (optional): ตั้งชื่อสำหรับแสดงในแดชบอร์ด
+- message_thread_id (optional): topic ID ใน supergroup
+- caption (optional): ข้อความแนบไฟล์ ความยาวไม่เกิน 1024 ตัวอักษร</code></pre>
+                <h3 class="mt-6 text-sm font-semibold uppercase tracking-wide text-slate-500">cURL Example</h3>
+<pre class="mt-3 overflow-x-auto rounded-2xl bg-slate-900 p-4 text-xs text-slate-100"><code>curl -X POST http://0.0.0.0:8405/api/upload \
+  -F "file=@/path/to/yourfile.pdf" \
+  -F "chat_id=-1001234567890" \
+  -F "token_upload=${TOKEN_UPLOAD}" \
+  -F "chat_name=MyChannel" \
+  -F "caption=Invoice for September" \
+  -F "message_thread_id=42"</code></pre>
+                <p class="mt-2 text-xs text-slate-400">* Endpoint อื่นต้องล็อกอินที่ <code>/login</code> แล้วแนบ cookie ในคำสั่ง cURL (เช่น <code>-c cookies.txt</code> / <code>-b cookies.txt</code>) แต่ <strong>/api/upload</strong> ตรวจสอบแค่ <code>TOKEN_UPLOAD</code></p>
+                <div class="mt-6 grid gap-4 sm:grid-cols-2">
+                    <div class="rounded-2xl border border-indigo-100 bg-indigo-50/80 p-4">
+                        <h3 class="text-sm font-semibold uppercase tracking-wide text-indigo-500">หลังอัปโหลด</h3>
+                        <ul class="mt-3 space-y-2 text-sm text-indigo-900/80">
+                            <li>ระบบคำนวณ SHA256 hash แล้วบันทึกในฐานข้อมูล</li>
+                            <li>สถานะในตารางจะอัปเดตเป็น <code class="rounded bg-slate-900/10 px-2 py-0.5 text-xs font-semibold">uploaded</code> โดยอัตโนมัติ</li>
+                            <li>หลังส่งสำเร็จ ไฟล์ในโฟลเดอร์เซิร์ฟเวอร์จะถูกลบเพื่อลดพื้นที่ (hash &amp; metadata ยังอยู่สำหรับอ้างอิง)</li>
+                            <li>กราฟ ApexCharts bar/donut รีเฟรชเรียลไทม์</li>
+                        </ul>
+                    </div>
+                    <div class="rounded-2xl border border-emerald-100 bg-emerald-50/80 p-4">
+                        <h3 class="text-sm font-semibold uppercase tracking-wide text-emerald-500">ตรวจสอบ &amp; จัดการ</h3>
+                        <ul class="mt-3 space-y-2 text-sm text-emerald-900/80">
+                            <li><code class="rounded bg-slate-900/5 px-2 py-0.5 text-xs font-semibold">GET /api/files</code> – รายการไฟล์ทั้งหมด</li>
+                            <li><code class="rounded bg-slate-900/5 px-2 py-0.5 text-xs font-semibold">GET /api/files/:id</code> – รายละเอียดไฟล์</li>
+                            <li><code class="rounded bg-slate-900/5 px-2 py-0.5 text-xs font-semibold">GET /api/files/:id/verify</code> – ตรวจสอบ SHA256 hash</li>
+                            <li><code class="rounded bg-slate-900/5 px-2 py-0.5 text-xs font-semibold">DELETE /api/files/:id</code> – ลบไฟล์และอัปเดตกราฟ</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <section class="rounded-3xl bg-white p-8 shadow-lg shadow-slate-200/60">
+                <h2 class="text-2xl font-semibold text-slate-900">Chat Mapping &amp; Metadata</h2>
+                <p class="mt-3 text-sm leading-6 text-slate-600">
+                    ใช้แดชบอร์ดหรือ REST API ในการตั้งชื่อ, แก้ไข และลบ mapping ของ chat ID เพื่อให้อ่านง่ายขึ้นในรายงานและกราฟ
+                </p>
+                <ul class="mt-4 space-y-2 text-sm text-slate-600">
+                    <li><code class="rounded bg-slate-900/5 px-2 py-0.5 text-xs font-semibold">POST /api/chat-name</code> – สร้าง/อัปเดตชื่อห้อง</li>
+                    <li><code class="rounded bg-slate-900/5 px-2 py-0.5 text-xs font-semibold">GET /api/chat-name/:chatId</code> – ตรวจสอบชื่อที่ตั้งไว้</li>
+                    <li><code class="rounded bg-slate-900/5 px-2 py-0.5 text-xs font-semibold">GET /api/chat-mappings</code> – รายการ mapping ทั้งหมด</li>
+                    <li><code class="rounded bg-slate-900/5 px-2 py-0.5 text-xs font-semibold">DELETE /api/chat-mappings/:id</code> – ลบ mapping ผ่านแดชบอร์ด/REST</li>
+                </ul>
+                <p class="mt-4 text-sm leading-6 text-slate-500">
+                    ฝั่ง UI มีฟอร์มเพิ่ม mapping, ปุ่มแก้ไข, ปุ่มลบ พร้อม modal ยืนยัน และข้อมูลจะซิงก์กับฐานข้อมูลทันที
+                </p>
+            </section>
+
+            <section class="rounded-3xl bg-white p-8 shadow-lg shadow-slate-200/60">
+                <h2 class="text-2xl font-semibold text-slate-900">UI &amp; การแสดงผลแบบเรียลไทม์</h2>
+                <ul class="mt-4 space-y-3 text-sm leading-6 text-slate-600">
+                    <li>กราฟ <strong>ApexCharts Donut</strong> แสดงจำนวนไฟล์แต่ละสถานะพร้อมรวมยอดตรงกลาง</li>
+                    <li>กราฟ <strong>ApexCharts Horizontal Bar</strong> แสดงเปอร์เซ็น progress ของไฟล์ที่กำลังอัปโหลดและค่าเฉลี่ยทั้งหมด</li>
+                    <li>Progress bar ขนาดเล็กในตารางเมื่อสถานะเป็น <code class="rounded bg-slate-900/5 px-2 py-0.5 text-xs font-semibold">pending</code> ให้ feedback ขณะส่ง MTProto</li>
+                    <li>รองรับชื่อไฟล์ภาษาอื่น/UTF-8 จาก CLI Linux ด้วยการ normalize และ sanitize ก่อนจัดเก็บ</li>
+                    <li>ทุกการอัปเดตจะรีเฟรชตารางและกราฟแบบ smooth animation ด้วย Tailwind + ApexCharts</li>
+                </ul>
+            </section>
+
+            <section class="rounded-3xl bg-white p-8 shadow-lg shadow-slate-200/60">
+                <h2 class="text-2xl font-semibold text-slate-900">System Notes</h2>
+                <ul class="mt-4 space-y-2 text-sm text-slate-600">
+                    <li>ไฟล์ที่อัปโหลดถูกเก็บไว้ชั่วคราวในโฟลเดอร์ <code class="rounded bg-slate-900/5 px-2 py-0.5 text-xs font-semibold">uploads/</code> และระบบจะลบออกทันทีหลังส่งสำเร็จ</li>
+                    <li>ฐานข้อมูล SQLite อยู่ที่ <code class="rounded bg-slate-900/5 px-2 py-0.5 text-xs font-semibold">database/app.db</code></li>
+                    <li>รันด้วย PM2 ชื่อโปรเซส <code class="rounded bg-slate-900/5 px-2 py-0.5 text-xs font-semibold">telegram-upload-file</code> บน <code class="rounded bg-slate-900/5 px-2 py-0.5 text-xs font-semibold">0.0.0.0:8405</code></li>
+                    <li>อย่าลืมตั้งค่า <code class="rounded bg-slate-900/5 px-2 py-0.5 text-xs font-semibold">TELEGRAM_API_ID</code>, <code class="rounded bg-slate-900/5 px-2 py-0.5 text-xs font-semibold">TELEGRAM_API_HASH</code>, และ <code class="rounded bg-slate-900/5 px-2 py-0.5 text-xs font-semibold">TG_STRING_SESSION</code> ใน environment หรือผ่าน flow login</li>
+                    <li>กำหนดค่า <code class="rounded bg-slate-900/5 px-2 py-0.5 text-xs font-semibold">ADMIN_USERNAME</code>, <code>ADMIN_PASSWORD</code>, <code>SESSION_SECRET</code> ใน environment เพื่อเปิดใช้งานหน้า Login</li>
+                    <li>กำหนดค่า <code class="rounded bg-slate-900/5 px-2 py-0.5 text-xs font-semibold">TOKEN_UPLOAD</code> ใน environment ให้ตรงกับ token ที่ Dashboard/API ส่งมา มิฉะนั้นระบบจะตอบกลับ 403</li>
+                    <li>รองรับการทำงานกับ MTProto timeout โดย retry อัตโนมัติและแจ้งเตือนบน console</li>
+                </ul>
+            </section>
+        </main>
+
+        <footer class="mt-12 text-center text-xs text-slate-500">
+            © 2025 Telegram Upload Studio — Crafted with Tailwind CSS &amp; ApexCharts
+        </footer>
+    </div>
+</body>
+</html>

@@ -1,0 +1,43 @@
+{
+  "name": "telegram-upload-file",
+  "version": "1.0.0",
+  "description": "A system to upload files to Telegram using MTProto API",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "pm2:start": "pm2 start ecosystem.config.js",
+    "pm2:stop": "pm2 stop telegram-upload-file",
+    "pm2:restart": "pm2 restart telegram-upload-file",
+    "pm2:status": "pm2 status telegram-upload-file",
+    "pm2:logs": "pm2 logs telegram-upload-file --lines 50 --nostream",
+    "pm2:delete": "pm2 delete telegram-upload-file",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "telegram",
+    "mtproto",
+    "file-upload",
+    "nodejs"
+  ],
+  "author": "Telegram File Upload System",
+  "license": "MIT",
+  "type": "commonjs",
+  "dependencies": {
+    "@mtproto/core": "^6.2.0",
+    "cors": "^2.8.5",
+    "crypto-js": "^4.1.1",
+    "dotenv": "^16.0.3",
+    "express": "^4.18.2",
+    "express-session": "^1.18.0",
+    "multer": "^1.4.5-lts.1",
+    "sanitize-filename": "^1.6.3",
+    "sqlite3": "^5.1.4",
+    "telegraf": "^4.11.2",
+    "telegram": "^2.19.10"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.22",
+    "pm2": "^5.3.0"
+  }
+}
