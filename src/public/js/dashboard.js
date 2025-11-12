@@ -24,7 +24,12 @@ const mappingStatsTotalBadge = document.getElementById('mapping-stats-total');
 const mappingStatsSummary = document.getElementById('mapping-stats-summary');
 const loginMessage = document.getElementById('login-message');
 const filterChatIdInput = document.getElementById('file-filter-chat-id');
-const filterChatMappingSelect = document.getElementById('file-filter-chat-mapping');
+const filterChatMappingContainer = document.getElementById('file-filter-chat-mapping-container');
+const filterChatMappingTrigger = document.getElementById('file-filter-chat-mapping-trigger');
+const filterChatMappingTriggerLabel = document.getElementById('file-filter-chat-mapping-trigger-label');
+const filterChatMappingPanel = document.getElementById('file-filter-chat-mapping-panel');
+const filterChatMappingList = document.getElementById('file-filter-chat-mapping-list');
+const filterChatMappingEmpty = document.getElementById('file-filter-chat-mapping-empty');
 const filterStartDateInput = document.getElementById('file-filter-start-date');
 const filterEndDateInput = document.getElementById('file-filter-end-date');
 const filterApplyBtn = document.getElementById('file-filter-apply');
@@ -34,6 +39,9 @@ let uploadProgressChart;
 let statusChart;
 let mappingStatsChart;
 let chartsInitialized = false;
+const DEFAULT_CHAT_MAPPING_LABEL = '-- ทั้งหมด --';
+let isChatMappingPanelOpen = false;
+let chatMappingGlobalListenersBound = false;
 let allFiles = [];
 let filteredFiles = [];
 let chatMappingsData = [];
@@ -220,9 +228,14 @@ function setupDashboardEventListeners() {
         filesList.addEventListener('click', handleFilesPaginationClick);
         filesList.dataset.paginationListenerAttached = 'true';
     }
-    if (filterChatMappingSelect && !filterChatMappingSelect.dataset.changeListenerAttached) {
-        filterChatMappingSelect.addEventListener('change', handleApplyFileFilters);
-        filterChatMappingSelect.dataset.changeListenerAttached = 'true';
+    if (filterChatMappingTrigger && !filterChatMappingTrigger.dataset.listenerAttached) {
+        filterChatMappingTrigger.addEventListener('click', toggleChatMappingPanel);
+        filterChatMappingTrigger.dataset.listenerAttached = 'true';
+    }
+    if (!chatMappingGlobalListenersBound && filterChatMappingContainer) {
+        document.addEventListener('click', handleChatMappingDocumentClick);
+        document.addEventListener('keydown', handleChatMappingKeydown);
+        chatMappingGlobalListenersBound = true;
     }
     if (filterChatIdInput && !filterChatIdInput.dataset.keyListenerAttached) {
         filterChatIdInput.addEventListener('keydown', handleFileFilterKeydown);
@@ -549,10 +562,21 @@ function resetMappingStatsUI() {
     if (mappingStatsTotalBadge) {
         mappingStatsTotalBadge.textContent = 'Total 0';
     }
-    if (filterChatMappingSelect) {
-        filterChatMappingSelect.innerHTML = '<option value="">-- ทั้งหมด --</option>';
-        filterChatMappingSelect.value = '';
+    if (filterChatMappingList) {
+        filterChatMappingList.innerHTML = `
+            <li>
+                <button type="button" class="flex w-full items-start justify-between gap-2 rounded-lg px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-100 focus:bg-slate-100 focus:outline-none" data-chat-mapping-option="true" data-value="" data-label="${DEFAULT_CHAT_MAPPING_LABEL}">
+                    <span class="font-medium text-slate-700">${DEFAULT_CHAT_MAPPING_LABEL}</span>
+                    <span class="text-xs text-slate-400">แสดงทุก Chat ID</span>
+                </button>
+            </li>
+        `;
+        registerChatMappingOptionListeners();
     }
+    if (filterChatMappingEmpty) {
+        filterChatMappingEmpty.classList.add('hidden');
+    }
+    setChatMappingFilter('', DEFAULT_CHAT_MAPPING_LABEL, false);
     if (mappingStatsSummary) {
         mappingStatsSummary.innerHTML = `
             <div class="rounded-xl bg-slate-50 p-3 text-sm text-slate-600">
@@ -575,7 +599,7 @@ function resetMappingStatsUI() {
 }
 
 function updateMappingStats(hasError = false) {
-    if (!mappingStatsChart && !mappingStatsTotalBadge && !mappingStatsSummary) {
+    if (!mappingStatsChart && !mappingStatsTotalBadge && !mappingStatsSummary && !filterChatMappingList) {
         return;
     }
 
@@ -585,8 +609,77 @@ function updateMappingStats(hasError = false) {
     }
 
     const totalMappings = chatMappingsData.length;
-    const usedChatIds = new Set();
+    const currentValue = filterChatMappingTrigger?.dataset.selectedValue || '';
+    let selectedLabel = DEFAULT_CHAT_MAPPING_LABEL;
+    let hasCurrentSelection = currentValue === '';
 
+    const dropdownOptions = [{
+        value: '',
+        label: DEFAULT_CHAT_MAPPING_LABEL,
+        subtitle: 'แสดงทุก Chat ID'
+    }];
+
+    chatMappingsData.forEach(mapping => {
+        const value = String(mapping.chat_id);
+        const label = mapping.chat_name || value;
+        dropdownOptions.push({
+            value,
+            label,
+            subtitle: value
+        });
+
+        if (currentValue === value) {
+            selectedLabel = label;
+            hasCurrentSelection = true;
+        }
+    });
+
+    if (!hasCurrentSelection) {
+        setChatMappingFilter('', DEFAULT_CHAT_MAPPING_LABEL, false);
+    } else {
+        if (filterChatMappingTrigger) {
+            filterChatMappingTrigger.dataset.selectedValue = hasCurrentSelection ? currentValue : '';
+        }
+        setChatMappingTriggerLabel(selectedLabel);
+        fileFilters.chatMapping = hasCurrentSelection ? currentValue : '';
+    }
+
+    if (filterChatMappingList) {
+        const selectedValue = filterChatMappingTrigger?.dataset.selectedValue || '';
+        const itemsHtml = dropdownOptions.map(option => {
+            const isSelected = selectedValue === option.value;
+            const baseClasses = 'flex w-full items-start justify-between gap-2 rounded-lg px-3 py-2 text-left text-sm transition focus:outline-none';
+            const stateClasses = isSelected
+                ? ' bg-indigo-50 text-indigo-600'
+                : ' text-slate-600 hover:bg-slate-100';
+            const subtitleColor = isSelected ? 'text-indigo-400' : 'text-slate-400';
+            const safeLabel = escapeHtml(option.label);
+            const safeValue = escapeHtml(option.value);
+            const subtitle = option.subtitle
+                ? `<span class="text-xs ${subtitleColor}">${escapeHtml(option.subtitle)}</span>`
+                : '';
+            return `
+                <li>
+                    <button type="button" class="${baseClasses}${stateClasses}" data-chat-mapping-option="true" data-value="${safeValue}" data-label="${safeLabel}">
+                        <span class="flex-1 font-medium">${safeLabel}</span>
+                        ${subtitle}
+                    </button>
+                </li>
+            `;
+        }).join('');
+        filterChatMappingList.innerHTML = itemsHtml;
+        registerChatMappingOptionListeners();
+    }
+
+    if (filterChatMappingEmpty) {
+        if (chatMappingsData.length === 0) {
+            filterChatMappingEmpty.classList.remove('hidden');
+        } else {
+            filterChatMappingEmpty.classList.add('hidden');
+        }
+    }
+
+    const usedChatIds = new Set();
     allFiles.forEach(file => {
         if (file?.chat_id != null) {
             usedChatIds.add(String(file.chat_id));
@@ -596,22 +689,6 @@ function updateMappingStats(hasError = false) {
     const usedMappings = chatMappingsData.filter(mapping => usedChatIds.has(String(mapping.chat_id))).length;
     const unusedMappings = Math.max(totalMappings - usedMappings, 0);
     const unmappedChats = Math.max(usedChatIds.size - usedMappings, 0);
-
-    if (filterChatMappingSelect) {
-        const currentValue = filterChatMappingSelect.value;
-        const optionsHtml = ['<option value="">-- ทั้งหมด --</option>'].concat(
-            chatMappingsData.map(mapping => {
-                const value = escapeHtml(String(mapping.chat_id));
-                const selected = currentValue === String(mapping.chat_id) ? 'selected' : '';
-                const label = escapeHtml(mapping.chat_name || mapping.chat_id);
-                return `<option value="${value}" ${selected}>${label}</option>`;
-            })
-        ).join('');
-        filterChatMappingSelect.innerHTML = optionsHtml;
-        if (currentValue && filterChatMappingSelect.value !== currentValue) {
-            filterChatMappingSelect.value = currentValue;
-        }
-    }
 
     if (mappingStatsChart) {
         mappingStatsChart.updateSeries([
@@ -651,9 +728,10 @@ function handleApplyFileFilters(event) {
         event.preventDefault();
     }
     fileFilters.chatId = filterChatIdInput?.value.trim() || '';
-    fileFilters.chatMapping = filterChatMappingSelect?.value || '';
+    fileFilters.chatMapping = filterChatMappingTrigger?.dataset.selectedValue || '';
     fileFilters.startDate = filterStartDateInput?.value || '';
     fileFilters.endDate = filterEndDateInput?.value || '';
+    closeChatMappingPanel();
     applyFileFilters({ resetPage: true });
 }
 
@@ -664,9 +742,8 @@ function handleResetFileFilters(event) {
     if (filterChatIdInput) {
         filterChatIdInput.value = '';
     }
-    if (filterChatMappingSelect) {
-        filterChatMappingSelect.value = '';
-    }
+    setChatMappingFilter('', DEFAULT_CHAT_MAPPING_LABEL, false);
+    closeChatMappingPanel();
     if (filterStartDateInput) {
         filterStartDateInput.value = '';
     }
@@ -756,6 +833,90 @@ function applyFileFilters({ resetPage = false } = {}) {
 
     updateStatusChart(filteredFiles);
     renderFilesView({ keepPage: !resetPage });
+}
+
+function setChatMappingTriggerLabel(label) {
+    const displayLabel = label || DEFAULT_CHAT_MAPPING_LABEL;
+    if (filterChatMappingTriggerLabel) {
+        filterChatMappingTriggerLabel.textContent = displayLabel;
+    }
+}
+
+function setChatMappingFilter(value, label, shouldApply = true) {
+    const normalizedValue = value || '';
+    if (filterChatMappingTrigger) {
+        filterChatMappingTrigger.dataset.selectedValue = normalizedValue;
+    }
+    setChatMappingTriggerLabel(label);
+    fileFilters.chatMapping = normalizedValue;
+    if (shouldApply) {
+        applyFileFilters({ resetPage: true });
+    }
+}
+
+function registerChatMappingOptionListeners() {
+    if (!filterChatMappingList) {
+        return;
+    }
+    filterChatMappingList.querySelectorAll('button[data-chat-mapping-option]').forEach(button => {
+        if (!button.dataset.listenerAttached) {
+            button.addEventListener('click', handleChatMappingOptionClick);
+            button.dataset.listenerAttached = 'true';
+        }
+    });
+}
+
+function handleChatMappingOptionClick(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    const target = event.currentTarget;
+    const value = target.dataset.value || '';
+    const label = target.dataset.label || DEFAULT_CHAT_MAPPING_LABEL;
+    setChatMappingFilter(value, label);
+    closeChatMappingPanel();
+}
+
+function toggleChatMappingPanel(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    if (isChatMappingPanelOpen) {
+        closeChatMappingPanel();
+    } else {
+        openChatMappingPanel();
+    }
+}
+
+function openChatMappingPanel() {
+    if (!filterChatMappingPanel) {
+        return;
+    }
+    filterChatMappingPanel.classList.remove('hidden');
+    isChatMappingPanelOpen = true;
+    filterChatMappingTrigger?.setAttribute('aria-expanded', 'true');
+}
+
+function closeChatMappingPanel() {
+    if (!filterChatMappingPanel) {
+        return;
+    }
+    filterChatMappingPanel.classList.add('hidden');
+    isChatMappingPanelOpen = false;
+    filterChatMappingTrigger?.setAttribute('aria-expanded', 'false');
+}
+
+function handleChatMappingDocumentClick(event) {
+    if (!isChatMappingPanelOpen) {
+        return;
+    }
+    if (!filterChatMappingContainer?.contains(event.target)) {
+        closeChatMappingPanel();
+    }
+}
+
+function handleChatMappingKeydown(event) {
+    if (event.key === 'Escape' && isChatMappingPanelOpen) {
+        closeChatMappingPanel();
+    }
 }
 
 function renderFilesView({ resetPage = false, keepPage = false } = {}) {

@@ -184,17 +184,28 @@
                                 <label for="file-filter-chat-id" class="text-xs font-semibold uppercase tracking-wide text-slate-500">Chat ID</label>
                                 <input id="file-filter-chat-id" type="text" placeholder="ค้นหาด้วย Chat ID" class="rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/40">
                             </div>
-                            <div class="flex flex-col gap-1">
-                                <label for="file-filter-chat-mapping" class="text-xs font-semibold uppercase tracking-wide text-slate-500">เลือกจาก Mapping</label>
+                            <div class="flex flex-col gap-1" id="file-filter-chat-mapping-container">
+                                <span class="text-xs font-semibold uppercase tracking-wide text-slate-500">เลือกจาก Mapping</span>
                                 <div class="relative">
-                                    <select id="file-filter-chat-mapping" class="w-full appearance-none rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/40">
-                                        <option value="">-- ทั้งหมด --</option>
-                                    </select>
-                                    <span class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-slate-400">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8.25 9.75 12 13.5l3.75-3.75"/>
-                                        </svg>
-                                    </span>
+                                    <button id="file-filter-chat-mapping-trigger" type="button" data-selected-value="" data-default-label="-- ทั้งหมด --" aria-haspopup="listbox" aria-expanded="false" class="flex w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/40">
+                                        <span id="file-filter-chat-mapping-trigger-label">-- ทั้งหมด --</span>
+                                        <span class="ml-2 flex items-center text-slate-400">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8.25 9.75 12 13.5l3.75-3.75"/>
+                                            </svg>
+                                        </span>
+                                    </button>
+                                    <div id="file-filter-chat-mapping-panel" class="absolute left-0 right-0 z-20 mt-2 hidden rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-200/50">
+                                        <ul id="file-filter-chat-mapping-list" class="max-h-60 overflow-y-auto py-1">
+                                            <li>
+                                                <button type="button" class="flex w-full items-start justify-between gap-2 rounded-lg px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-100 focus:bg-slate-100 focus:outline-none" data-chat-mapping-option="true" data-value="" data-label="-- ทั้งหมด --">
+                                                    <span class="font-medium text-slate-700">-- ทั้งหมด --</span>
+                                                    <span class="text-xs text-slate-400">แสดงทุก Chat ID</span>
+                                                </button>
+                                            </li>
+                                        </ul>
+                                        <p id="file-filter-chat-mapping-empty" class="hidden px-4 py-3 text-center text-sm text-slate-500">ไม่มีข้อมูล Mapping</p>
+                                    </div>
                                 </div>
                             </div>
                             <div class="flex flex-col gap-1">
