@@ -19,17 +19,19 @@ const logoutBtn = document.getElementById('logout-btn');
 const adminLogoutBtn = document.getElementById('admin-logout-btn');
 const uploadProgressChartElement = document.getElementById('upload-progress-chart');
 const statusChartElement = document.getElementById('status-chart');
+const mappingStatsChartElement = document.getElementById('mapping-stats-chart');
+const mappingStatsTotalBadge = document.getElementById('mapping-stats-total');
+const mappingStatsSummary = document.getElementById('mapping-stats-summary');
 const loginMessage = document.getElementById('login-message');
 const filterChatIdInput = document.getElementById('file-filter-chat-id');
 const filterStartDateInput = document.getElementById('file-filter-start-date');
 const filterEndDateInput = document.getElementById('file-filter-end-date');
 const filterApplyBtn = document.getElementById('file-filter-apply');
 const filterResetBtn = document.getElementById('file-filter-reset');
-const mappingSummaryCount = document.getElementById('chat-mapping-count');
-const mappingSummaryUpdated = document.getElementById('chat-mapping-updated');
 
 let uploadProgressChart;
 let statusChart;
+let mappingStatsChart;
 let chartsInitialized = false;
 let allFiles = [];
 let filteredFiles = [];
@@ -343,6 +345,64 @@ function initializeChartsIfNeeded() {
         statusChart.render();
     }
 
+    if (mappingStatsChartElement) {
+        mappingStatsChart = new ApexCharts(mappingStatsChartElement, {
+            chart: {
+                type: 'donut',
+                height: 280,
+                toolbar: { show: false }
+            },
+            labels: ['Mapped & In Use', 'Mapped (Unused)', 'Unmapped Chats'],
+            series: [0, 0, 0],
+            colors: ['#6366f1', '#c4b5fd', '#fda4af'],
+            dataLabels: {
+                enabled: true,
+                style: {
+                    fontSize: '13px',
+                    fontWeight: 600
+                }
+            },
+            stroke: {
+                width: 4,
+                colors: ['#ffffff']
+            },
+            legend: {
+                position: 'bottom',
+                fontSize: '12px'
+            },
+            plotOptions: {
+                pie: {
+                    donut: {
+                        size: '72%',
+                        labels: {
+                            show: true,
+                            name: {
+                                offsetY: 12,
+                                fontSize: '12px'
+                            },
+                            value: {
+                                fontSize: '26px',
+                                fontWeight: '700',
+                                formatter: val => `${val}`
+                            },
+                            total: {
+                                show: true,
+                                label: 'Chats',
+                                fontSize: '14px',
+                                fontWeight: '600',
+                                formatter: w => {
+                                    const sum = w.globals.seriesTotals.reduce((a, b) => a + b, 0);
+                                    return `${sum}`;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        mappingStatsChart.render();
+    }
+
     chartsInitialized = true;
 }
 
@@ -438,10 +498,14 @@ async function loadFiles() {
         filesCurrentPage = 1;
         updateStatusChart(allFiles);
         renderFilesView({ resetPage: true });
+        updateMappingStats();
     } catch (error) {
         console.error('Error loading files:', error);
+        allFiles = [];
+        filteredFiles = [];
         filesList.innerHTML = '<p class="p-4 text-sm text-rose-500">Error loading files. Please try again.</p>';
         updateStatusChart([]);
+        updateMappingStats(true);
     }
 }
 
@@ -459,7 +523,7 @@ async function loadChatMappings() {
             }
         });
 
-        updateMappingSummary();
+        updateMappingStats();
 
         if (allFiles.length) {
             renderFilesView({ keepPage: true });
@@ -468,45 +532,91 @@ async function loadChatMappings() {
         console.error('Error loading chat mappings:', error);
         chatMappingsData = [];
         chatMappingByChatId.clear();
-        updateMappingSummary(true);
+        updateMappingStats(true);
     }
 }
 
-function updateMappingSummary(hasError = false) {
-    if (!mappingSummaryCount && !mappingSummaryUpdated) {
+function resetMappingStatsUI() {
+    if (mappingStatsChart) {
+        mappingStatsChart.updateSeries([0, 0, 0]);
+    }
+    if (mappingStatsTotalBadge) {
+        mappingStatsTotalBadge.textContent = 'Total 0';
+    }
+    if (mappingStatsSummary) {
+        mappingStatsSummary.innerHTML = `
+            <div class="rounded-xl bg-slate-50 p-3 text-sm text-slate-600">
+                <dt class="text-xs font-semibold uppercase tracking-wide text-slate-400">Mapped &amp; In Use</dt>
+                <dd class="mt-2 text-2xl font-semibold text-slate-900">-</dd>
+                <p class="mt-1 text-xs text-slate-400">ถูกใช้งานกับการอัปโหลดล่าสุด</p>
+            </div>
+            <div class="rounded-xl bg-slate-50 p-3 text-sm text-slate-600">
+                <dt class="text-xs font-semibold uppercase tracking-wide text-slate-400">Mapped (Unused)</dt>
+                <dd class="mt-2 text-2xl font-semibold text-slate-900">-</dd>
+                <p class="mt-1 text-xs text-slate-400">พร้อมใช้งานสำหรับการอัปโหลด</p>
+            </div>
+            <div class="rounded-xl bg-slate-50 p-3 text-sm text-slate-600">
+                <dt class="text-xs font-semibold uppercase tracking-wide text-slate-400">Unmapped Chats</dt>
+                <dd class="mt-2 text-2xl font-semibold text-slate-900">-</dd>
+                <p class="mt-1 text-xs text-slate-400">แนะนำให้ตั้งชื่อเพื่อความสะดวก</p>
+            </div>
+        `;
+    }
+}
+
+function updateMappingStats(hasError = false) {
+    if (!mappingStatsChart && !mappingStatsTotalBadge && !mappingStatsSummary) {
         return;
     }
 
     if (hasError) {
-        if (mappingSummaryCount) {
-            mappingSummaryCount.textContent = '-';
-        }
-        if (mappingSummaryUpdated) {
-            mappingSummaryUpdated.textContent = 'ไม่สามารถดึงข้อมูลได้';
-        }
+        resetMappingStatsUI();
         return;
     }
 
     const totalMappings = chatMappingsData.length;
-    if (mappingSummaryCount) {
-        mappingSummaryCount.textContent = totalMappings ? totalMappings.toString() : '0';
+    const usedChatIds = new Set();
+
+    allFiles.forEach(file => {
+        if (file?.chat_id != null) {
+            usedChatIds.add(String(file.chat_id));
+        }
+    });
+
+    const usedMappings = chatMappingsData.filter(mapping => usedChatIds.has(String(mapping.chat_id))).length;
+    const unusedMappings = Math.max(totalMappings - usedMappings, 0);
+    const unmappedChats = Math.max(usedChatIds.size - usedMappings, 0);
+
+    if (mappingStatsChart) {
+        mappingStatsChart.updateSeries([
+            usedMappings,
+            unusedMappings,
+            unmappedChats
+        ]);
     }
 
-    if (mappingSummaryUpdated) {
-        if (!totalMappings) {
-            mappingSummaryUpdated.textContent = '-';
-            return;
-        }
-        const latest = chatMappingsData.reduce((latestMapping, current) => {
-            const currentTimestamp = new Date(current.updated_at || current.created_at || 0).getTime();
-            const latestTimestamp = latestMapping
-                ? new Date(latestMapping.updated_at || latestMapping.created_at || 0).getTime()
-                : 0;
-            return currentTimestamp > latestTimestamp ? current : latestMapping;
-        }, null);
-        mappingSummaryUpdated.textContent = latest
-            ? formatDateTime(latest.updated_at || latest.created_at)
-            : '-';
+    if (mappingStatsTotalBadge) {
+        mappingStatsTotalBadge.textContent = `Total ${totalMappings}`;
+    }
+
+    if (mappingStatsSummary) {
+        mappingStatsSummary.innerHTML = `
+            <div class="rounded-xl bg-slate-50 p-3 text-sm text-slate-600">
+                <dt class="text-xs font-semibold uppercase tracking-wide text-slate-400">Mapped &amp; In Use</dt>
+                <dd class="mt-2 text-2xl font-semibold text-slate-900">${usedMappings}</dd>
+                <p class="mt-1 text-xs text-slate-400">ถูกใช้งานกับการอัปโหลดล่าสุด</p>
+            </div>
+            <div class="rounded-xl bg-slate-50 p-3 text-sm text-slate-600">
+                <dt class="text-xs font-semibold uppercase tracking-wide text-slate-400">Mapped (Unused)</dt>
+                <dd class="mt-2 text-2xl font-semibold text-slate-900">${unusedMappings}</dd>
+                <p class="mt-1 text-xs text-slate-400">พร้อมใช้งานสำหรับการอัปโหลด</p>
+            </div>
+            <div class="rounded-xl bg-slate-50 p-3 text-sm text-slate-600">
+                <dt class="text-xs font-semibold uppercase tracking-wide text-slate-400">Unmapped Chats</dt>
+                <dd class="mt-2 text-2xl font-semibold text-slate-900">${unmappedChats}</dd>
+                <p class="mt-1 text-xs text-slate-400">แนะนำให้ตั้งชื่อเพื่อความสะดวก</p>
+            </div>
+        `;
     }
 }
 
