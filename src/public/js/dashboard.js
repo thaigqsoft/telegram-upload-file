@@ -13,7 +13,6 @@ const apiHashInput = document.getElementById('api-hash');
 const phoneNumberInput = document.getElementById('phone-number');
 const codeSection = document.getElementById('code-section');
 const codeInput = document.getElementById('code');
-const uploadForm = document.getElementById('upload-form');
 const filesList = document.getElementById('files-list');
 const chatMappingsList = document.getElementById('chat-mappings-list');
 const refreshFilesBtn = document.getElementById('refresh-files');
@@ -29,9 +28,6 @@ const mappingChatNameInput = document.getElementById('mapping-chat-name');
 const mappingSubmitBtn = document.getElementById('mapping-submit-btn');
 const cancelMappingBtn = document.getElementById('cancel-mapping-btn');
 const loginMessage = document.getElementById('login-message');
-const uploadProgressCard = document.getElementById('upload-progress-card');
-const uploadProgressLabel = document.getElementById('upload-progress-label');
-const uploadProgressText = document.getElementById('upload-progress-text');
 const filterChatIdInput = document.getElementById('file-filter-chat-id');
 const filterStartDateInput = document.getElementById('file-filter-start-date');
 const filterEndDateInput = document.getElementById('file-filter-end-date');
@@ -221,10 +217,6 @@ async function handleVerifyCode(event) {
 }
 
 function setupDashboardEventListeners() {
-    if (uploadForm && !uploadForm.dataset.listenerAttached) {
-        uploadForm.addEventListener('submit', handleFileUpload);
-        uploadForm.dataset.listenerAttached = 'true';
-    }
     if (refreshFilesBtn && !refreshFilesBtn.dataset.listenerAttached) {
         refreshFilesBtn.addEventListener('click', loadFiles);
         refreshFilesBtn.dataset.listenerAttached = 'true';
@@ -511,102 +503,6 @@ function escapeHtml(value) {
     return value.replace(/[&<>"']/g, match => htmlEscapeMap[match]);
 }
 
-// File Upload
-async function handleFileUpload(event) {
-    event.preventDefault();
-
-    const formData = new FormData(uploadForm);
-    const file = formData.get('file');
-    const chatId = (formData.get('chat_id') || '').toString().trim();
-    const chatName = (formData.get('chat_name') || '').toString().trim();
-    const messageThreadId = (formData.get('message_thread_id') || '').toString().trim();
-    const tokenUpload = (formData.get('token_upload') || '').toString().trim();
-    const captionRaw = (formData.get('caption') || '').toString();
-    const caption = captionRaw.trim();
-
-    if (!file) {
-        alert('Please select a file to upload');
-        return;
-    }
-
-    if (!chatId) {
-        alert('Please enter a chat ID');
-        return;
-    }
-
-    if (!tokenUpload) {
-        alert('Please enter the upload token.');
-        return;
-    }
-
-    if (caption.length > 1024) {
-        alert('Caption must be 1024 characters or less.');
-        return;
-    }
-
-    formData.set('chat_id', chatId);
-    formData.set('chat_name', chatName);
-    formData.set('message_thread_id', messageThreadId);
-    formData.set('token_upload', tokenUpload);
-    formData.set('caption', caption);
-
-    uploadProgressCard?.classList.remove('hidden');
-    updateUploadProgressChart(0);
-    if (uploadProgressText) {
-        uploadProgressText.textContent = 'Preparing upload...';
-    }
-
-    try {
-        if (chatName) {
-            await setChatName(chatId, chatName);
-        }
-
-        const xhr = new XMLHttpRequest();
-
-        xhr.upload.addEventListener('progress', (e) => {
-            if (e.lengthComputable) {
-                const percentComplete = Math.round((e.loaded / e.total) * 100);
-                updateUploadProgressChart(percentComplete);
-                if (uploadProgressText) {
-                    uploadProgressText.textContent = `${formatBytes(e.loaded)} of ${formatBytes(e.total)} uploaded`;
-                }
-            }
-        });
-
-        xhr.addEventListener('load', () => {
-            if (xhr.status === 200) {
-                updateUploadProgressChart(100);
-                if (uploadProgressText) {
-                    uploadProgressText.textContent = 'Upload complete!';
-                }
-                uploadForm.reset();
-                setTimeout(() => {
-                    uploadProgressCard?.classList.add('hidden');
-                }, 1800);
-
-                loadFiles();
-                alert('File uploaded successfully!');
-            } else {
-                const response = JSON.parse(xhr.responseText);
-                uploadProgressCard?.classList.add('hidden');
-                alert(`Upload failed: ${response.error}`);
-            }
-        });
-
-        xhr.addEventListener('error', () => {
-            uploadProgressCard?.classList.add('hidden');
-            alert('Upload failed. Please try again.');
-        });
-
-        xhr.open('POST', `${API_BASE}/upload`);
-        xhr.send(formData);
-    } catch (error) {
-        uploadProgressCard?.classList.add('hidden');
-        console.error('Upload error:', error);
-        alert(`Upload failed: ${error.message}`);
-    }
-}
-
 // File Table
 async function loadFiles() {
     try {
@@ -825,20 +721,35 @@ function renderFilesView({ resetPage = false, keepPage = false } = {}) {
     const startIndex = (filesCurrentPage - 1) * FILES_PAGE_SIZE;
     const currentItems = filteredFiles.slice(startIndex, startIndex + FILES_PAGE_SIZE);
 
-    const cardsHtml = currentItems.map(file => renderFileCard(file)).join('');
+    const rowsHtml = currentItems.map(file => renderFileRow(file)).join('');
 
     filesList.innerHTML = `
-        <div class="space-y-6">
-            <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-                ${cardsHtml}
+        <div class="space-y-5">
+            <div class="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm shadow-slate-200/40">
+                <table class="min-w-full divide-y divide-slate-100">
+                    <thead class="bg-slate-50">
+                        <tr class="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                            <th class="px-4 py-3 text-left">ไฟล์</th>
+                            <th class="px-4 py-3 text-left">Chat ID</th>
+                            <th class="px-4 py-3 text-left">Chat Mapping</th>
+                            <th class="px-4 py-3 text-left">สถานะ</th>
+                            <th class="px-4 py-3 text-left">อัปเดตล่าสุด</th>
+                            <th class="px-4 py-3 text-left">การจัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100 text-sm text-slate-600">
+                        ${rowsHtml}
+                    </tbody>
+                </table>
             </div>
             ${renderPaginationControls(totalPages, filteredFiles.length)}
         </div>
     `;
 }
 
-function renderFileCard(file) {
-    const fileDate = formatDateTime(file.created_at);
+function renderFileRow(file) {
+    const fileUpdatedAt = formatDateTime(file.updated_at || file.created_at);
+    const fileCreatedAt = formatDateTime(file.created_at);
     const statusBadge = buildFileStatusBadge(file);
     const storageBadge = buildStorageBadge(file);
     const mapping = chatMappingByChatId.get(file.chat_id);
@@ -846,43 +757,51 @@ function renderFileCard(file) {
     const hasMapping = Boolean(mapping || file.chat_name);
 
     const verifyButton = file.local_deleted
-        ? `<button disabled class="inline-flex items-center rounded-lg bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-300">Verify</button>`
-        : `<button onclick="verifyFile(${file.id})" class="inline-flex items-center rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-200">Verify</button>`;
+        ? `<button disabled class="inline-flex items-center gap-1 rounded-lg bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-300">
+                Verify
+           </button>`
+        : `<button onclick="verifyFile(${file.id})" class="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-200">
+                Verify
+           </button>`;
 
     return `
-        <article class="flex h-full flex-col justify-between gap-4 rounded-2xl border border-slate-100 bg-white p-5 shadow-sm shadow-slate-200/40 transition hover:-translate-y-1 hover:shadow-lg">
-            <div class="space-y-4">
-                <div class="flex items-start justify-between gap-3">
-                    <div>
-                        <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">ไฟล์</p>
-                        <h4 class="mt-1 text-base font-semibold text-slate-900">${escapeHtml(file.filename)}</h4>
-                        <p class="text-xs text-slate-500">${escapeHtml(fileDate)}</p>
-                    </div>
-                    ${statusBadge}
+        <tr class="align-top transition hover:bg-slate-50/60">
+            <td class="px-4 py-4">
+                <div class="flex flex-col gap-1">
+                    <span class="font-semibold text-slate-700">${escapeHtml(file.filename)}</span>
+                    <span class="text-xs text-slate-400">สร้างเมื่อ ${escapeHtml(fileCreatedAt)}</span>
                 </div>
-                <dl class="space-y-3 text-sm text-slate-600">
-                    <div class="flex items-center justify-between gap-3">
-                        <dt class="text-slate-500">Chat ID</dt>
-                        <dd class="font-mono text-xs text-slate-500">${escapeHtml(String(file.chat_id || ''))}</dd>
-                    </div>
-                    <div class="flex items-center justify-between gap-3">
-                        <dt class="text-slate-500">Chat Mapping</dt>
-                        <dd class="flex items-center gap-2">
-                            <span class="rounded-full ${hasMapping ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'} px-3 py-1 text-xs font-semibold">${hasMapping ? 'Mapped' : 'Not mapped'}</span>
-                            <span class="text-xs font-medium text-slate-600">${escapeHtml(mappingName)}</span>
-                        </dd>
-                    </div>
-                    <div class="flex items-center justify-between gap-3">
-                        <dt class="text-slate-500">สถานะไฟล์บนเซิร์ฟเวอร์</dt>
-                        <dd>${storageBadge}</dd>
-                    </div>
-                </dl>
-            </div>
-            <div class="flex flex-wrap gap-2">
-                ${verifyButton}
-                <button onclick="deleteFile(${file.id})" class="inline-flex items-center rounded-lg bg-rose-100 px-3 py-1.5 text-xs font-semibold text-rose-600 transition hover:bg-rose-200">Delete</button>
-            </div>
-        </article>
+            </td>
+            <td class="px-4 py-4">
+                <div class="flex flex-col gap-1">
+                    <span class="font-mono text-xs text-slate-500">${escapeHtml(String(file.chat_id || ''))}</span>
+                    <span class="text-xs text-slate-400">${hasMapping ? 'เชื่อมกับ Mapping' : 'ยังไม่ได้แมป'}</span>
+                </div>
+            </td>
+            <td class="px-4 py-4">
+                <div class="flex items-center gap-2">
+                    <span class="rounded-full ${hasMapping ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'} px-3 py-1 text-xs font-semibold">
+                        ${hasMapping ? 'Mapped' : 'Not mapped'}
+                    </span>
+                    <span class="text-xs font-medium text-slate-600">${escapeHtml(mappingName)}</span>
+                </div>
+            </td>
+            <td class="px-4 py-4">
+                <div class="flex flex-col gap-2">
+                    ${statusBadge}
+                    ${storageBadge}
+                </div>
+            </td>
+            <td class="px-4 py-4 text-xs text-slate-500">${escapeHtml(fileUpdatedAt)}</td>
+            <td class="px-4 py-4">
+                <div class="flex flex-wrap gap-2">
+                    ${verifyButton}
+                    <button onclick="deleteFile(${file.id})" class="inline-flex items-center gap-1 rounded-lg bg-rose-100 px-3 py-1.5 text-xs font-semibold text-rose-600 transition hover:bg-rose-200">
+                        Delete
+                    </button>
+                </div>
+            </td>
+        </tr>
     `;
 }
 
@@ -925,8 +844,8 @@ function buildFileStatusBadge(file) {
     const status = file.status || 'unknown';
     if (status === 'pending') {
         return `
-            <div class="flex flex-col items-end gap-2">
-                <span class="inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-amber-700">${escapeHtml(status)}</span>
+            <div class="flex flex-col gap-1">
+                <span class="inline-flex w-fit items-center rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-amber-700">${escapeHtml(status)}</span>
                 <div class="progress-mini"><div class="progress-mini-fill"></div></div>
             </div>
         `;
@@ -937,15 +856,15 @@ function buildFileStatusBadge(file) {
         : 'bg-rose-100 text-rose-600';
 
     return `
-        <span class="inline-flex items-center rounded-full ${badgeClass} px-3 py-1 text-xs font-semibold uppercase tracking-wide">${escapeHtml(status)}</span>
+        <span class="inline-flex w-fit items-center rounded-full ${badgeClass} px-3 py-1 text-xs font-semibold uppercase tracking-wide">${escapeHtml(status)}</span>
     `;
 }
 
 function buildStorageBadge(file) {
     if (file.local_deleted) {
-        return `<span class="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Local Removed</span>`;
+        return `<span class="inline-flex w-fit items-center rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Local Removed</span>`;
     }
-    return `<span class="inline-flex items-center rounded-full bg-indigo-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-indigo-600">Stored</span>`;
+    return `<span class="inline-flex w-fit items-center rounded-full bg-indigo-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-indigo-600">Stored</span>`;
 }
 
 async function setChatName(chatId, chatName) {

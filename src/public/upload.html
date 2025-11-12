@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload Center | Telegram Upload Studio</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+</head>
+<body class="bg-slate-100 text-slate-800">
+    <div class="mx-auto flex min-h-screen max-w-5xl flex-col px-4 py-10 sm:px-6 lg:px-8">
+        <header class="mb-10 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+                <h1 class="text-3xl font-bold tracking-tight text-slate-900">Upload Center</h1>
+                <p class="mt-1 text-sm text-slate-600">อัปโหลดไฟล์ไปยัง Telegram ได้อย่างรวดเร็ว และติดตามความคืบหน้าแบบเรียลไทม์</p>
+            </div>
+            <nav class="flex flex-wrap items-center justify-start gap-2 sm:justify-end">
+                <a href="/" class="inline-flex items-center gap-2 rounded-xl border border-transparent bg-white px-4 py-2 text-sm font-semibold text-slate-600 shadow-sm transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-200 focus:ring-offset-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="m10.5 6 6 6-6 6"/>
+                    </svg>
+                    กลับสู่ Dashboard
+                </a>
+                <a href="/docs.html" target="_blank" class="inline-flex items-center gap-2 rounded-xl border border-transparent bg-sky-100 px-4 py-2 text-sm font-semibold text-sky-700 shadow-sm transition hover:bg-sky-200 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="m13.5 4.5 6 6m0 0-6 6m6-6h-15"/>
+                    </svg>
+                    API &amp; User Guide
+                </a>
+                <button id="upload-logout-btn" class="inline-flex hidden items-center gap-2 rounded-xl border border-transparent bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:ring-offset-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15.75 5.25v-1.5A1.5 1.5 0 0 0 14.25 2.25h-8.5A1.5 1.5 0 0 0 4.25 3.75v16.5a1.5 1.5 0 0 0 1.5 1.5h8.5a1.5 1.5 0 0 0 1.5-1.5v-1.5m3-5.25H9.75m6 0 3-3m-3 3 3 3"/>
+                    </svg>
+                    ล้างการเชื่อมต่อ Telegram
+                </button>
+                <button id="upload-admin-logout-btn" class="inline-flex items-center gap-2 rounded-xl border border-transparent bg-white px-4 py-2 text-sm font-semibold text-slate-600 shadow-sm transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-200 focus:ring-offset-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-9A2.25 2.25 0 0 0 2.25 5.25v13.5A2.25 2.25 0 0 0 4.5 21h9a2.25 2.25 0 0 0 2.25-2.25V15m3 3 3-3m0 0-3-3m3 3H9"/>
+                    </svg>
+                    ออกจากระบบผู้ดูแล
+                </button>
+            </nav>
+        </header>
+
+        <main class="flex-1 space-y-8">
+            <section class="rounded-2xl bg-white p-6 shadow-lg shadow-slate-200/60">
+                <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                    <div>
+                        <h2 class="text-lg font-semibold text-slate-900">Upload a File</h2>
+                        <p class="text-sm text-slate-500">กรอกข้อมูลให้ครบถ้วน แล้วระบบจะส่งไฟล์ไปยัง Telegram ให้โดยอัตโนมัติ</p>
+                    </div>
+                    <a href="/" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-50">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16.023 9.348h4.5v-4.5m0 0-2.621 2.621A8.25 8.25 0 1 0 19.5 12.75"/>
+                        </svg>
+                        ตรวจสอบสถานะล่าสุด
+                    </a>
+                </div>
+                <form id="upload-form" enctype="multipart/form-data" class="mt-6 space-y-5">
+                    <div>
+                        <label for="file" class="mb-2 block text-sm font-medium text-slate-600">Select File</label>
+                        <input id="file" name="file" type="file" class="block w-full cursor-pointer rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-600 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/40" required>
+                    </div>
+                    <div>
+                        <label for="upload-token" class="mb-2 block text-sm font-medium text-slate-600">Upload Token</label>
+                        <input id="upload-token" name="token_upload" type="password" autocomplete="off" placeholder="Enter secure upload token" class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-medium text-slate-700 shadow-sm transition focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/40" required>
+                        <p class="mt-1 text-xs text-slate-400">จำเป็นต้องกรอก TOKEN_UPLOAD ที่กำหนดไว้ในเซิร์ฟเวอร์ เพื่อความปลอดภัย</p>
+                    </div>
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <div>
+                            <label for="chat-id" class="mb-2 block text-sm font-medium text-slate-600">Chat ID</label>
+                            <input id="chat-id" name="chat_id" type="text" placeholder="e.g. -1001234567890" class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-medium text-slate-700 shadow-sm transition focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/40" required>
+                        </div>
+                        <div>
+                            <label for="chat-name" class="mb-2 block text-sm font-medium text-slate-600">Chat Name (optional)</label>
+                            <input id="chat-name" name="chat_name" type="text" placeholder="Friendly name" class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-medium text-slate-700 shadow-sm transition focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/40">
+                        </div>
+                    </div>
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <div>
+                            <label for="message-thread-id" class="mb-2 block text-sm font-medium text-slate-600">Message Thread ID (optional)</label>
+                            <input id="message-thread-id" name="message_thread_id" type="text" placeholder="Topic ID" class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-medium text-slate-700 shadow-sm transition focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/40">
+                        </div>
+                        <div>
+                            <label for="caption" class="mb-2 block text-sm font-medium text-slate-600">Caption (optional, max 1024 chars)</label>
+                            <textarea id="caption" name="caption" rows="3" placeholder="Add a caption to send with the file" class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-medium text-slate-700 shadow-sm transition focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"></textarea>
+                        </div>
+                    </div>
+                    <button type="submit" class="inline-flex items-center gap-2 rounded-xl border border-transparent bg-emerald-500 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4.5 12.75l6 6 9-13.5"/>
+                        </svg>
+                        Upload to Telegram
+                    </button>
+                </form>
+                <div id="upload-message" class="mt-4 hidden"></div>
+            </section>
+
+            <section id="upload-progress-card" class="hidden rounded-2xl bg-slate-900 text-white shadow-lg shadow-emerald-500/30">
+                <div class="px-6 py-5">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-lg font-semibold">Upload Progress</h3>
+                        <span id="upload-progress-label" class="text-sm font-semibold uppercase tracking-wider text-emerald-200">0%</span>
+                    </div>
+                    <div class="mt-6" id="upload-progress-chart"></div>
+                    <p id="upload-progress-text" class="mt-6 text-xs uppercase tracking-[0.25em] text-emerald-200">Waiting for upload...</p>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="js/upload.js"></script>
+</body>
+</html>
+
