@@ -32,6 +32,11 @@ const loginMessage = document.getElementById('login-message');
 const uploadProgressCard = document.getElementById('upload-progress-card');
 const uploadProgressLabel = document.getElementById('upload-progress-label');
 const uploadProgressText = document.getElementById('upload-progress-text');
+const filterChatIdInput = document.getElementById('file-filter-chat-id');
+const filterStartDateInput = document.getElementById('file-filter-start-date');
+const filterEndDateInput = document.getElementById('file-filter-end-date');
+const filterApplyBtn = document.getElementById('file-filter-apply');
+const filterResetBtn = document.getElementById('file-filter-reset');
 
 let uploadProgressChart;
 let statusChart;
@@ -40,6 +45,17 @@ const mappingCache = new Map();
 let isMappingEditMode = false;
 let editingMappingId = null;
 let originalMappingChatId = null;
+let allFiles = [];
+let filteredFiles = [];
+let chatMappingsData = [];
+let filesCurrentPage = 1;
+const FILES_PAGE_SIZE = 50;
+const chatMappingByChatId = new Map();
+const fileFilters = {
+    chatId: '',
+    startDate: '',
+    endDate: ''
+};
 
 const loginContext = {
     apiId: null,
@@ -220,6 +236,30 @@ function setupDashboardEventListeners() {
             loadChatMappings();
         });
         refreshMappingsBtn.dataset.listenerAttached = 'true';
+    }
+    if (filterApplyBtn && !filterApplyBtn.dataset.listenerAttached) {
+        filterApplyBtn.addEventListener('click', handleApplyFileFilters);
+        filterApplyBtn.dataset.listenerAttached = 'true';
+    }
+    if (filterResetBtn && !filterResetBtn.dataset.listenerAttached) {
+        filterResetBtn.addEventListener('click', handleResetFileFilters);
+        filterResetBtn.dataset.listenerAttached = 'true';
+    }
+    if (filesList && !filesList.dataset.paginationListenerAttached) {
+        filesList.addEventListener('click', handleFilesPaginationClick);
+        filesList.dataset.paginationListenerAttached = 'true';
+    }
+    if (filterChatIdInput && !filterChatIdInput.dataset.keyListenerAttached) {
+        filterChatIdInput.addEventListener('keydown', handleFileFilterKeydown);
+        filterChatIdInput.dataset.keyListenerAttached = 'true';
+    }
+    if (filterStartDateInput && !filterStartDateInput.dataset.changeListenerAttached) {
+        filterStartDateInput.addEventListener('change', () => handleApplyFileFilters());
+        filterStartDateInput.dataset.changeListenerAttached = 'true';
+    }
+    if (filterEndDateInput && !filterEndDateInput.dataset.changeListenerAttached) {
+        filterEndDateInput.addEventListener('change', () => handleApplyFileFilters());
+        filterEndDateInput.dataset.changeListenerAttached = 'true';
     }
 }
 
@@ -441,6 +481,36 @@ function formatBytes(bytes) {
     return `${value.toFixed(1)} ${units[index]}`;
 }
 
+function formatDateTime(value) {
+    if (!value) {
+        return 'ไม่ทราบเวลา';
+    }
+    try {
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) {
+            return 'ไม่ทราบเวลา';
+        }
+        return date.toLocaleString();
+    } catch (error) {
+        return 'ไม่ทราบเวลา';
+    }
+}
+
+const htmlEscapeMap = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+};
+
+function escapeHtml(value) {
+    if (typeof value !== 'string') {
+        return value == null ? '' : String(value);
+    }
+    return value.replace(/[&<>"']/g, match => htmlEscapeMap[match]);
+}
+
 // File Upload
 async function handleFileUpload(event) {
     event.preventDefault();
@@ -543,75 +613,16 @@ async function loadFiles() {
         const response = await fetch(`${API_BASE}/files`);
         const files = await response.json();
 
-        if (!files.length) {
-            filesList.innerHTML = '<p class="p-4 text-sm text-slate-500">No files uploaded yet.</p>';
-            updateStatusChart([]);
-            return;
-        }
-
-        renderFilesTable(files);
-        updateStatusChart(files);
+        allFiles = Array.isArray(files) ? files : [];
+        filteredFiles = [...allFiles];
+        filesCurrentPage = 1;
+        updateStatusChart(allFiles);
+        renderFilesView({ resetPage: true });
     } catch (error) {
         console.error('Error loading files:', error);
         filesList.innerHTML = '<p class="p-4 text-sm text-rose-500">Error loading files. Please try again.</p>';
         updateStatusChart([]);
     }
-}
-
-function renderFilesTable(files) {
-    const rows = files.map(file => {
-        const date = new Date(file.created_at).toLocaleString();
-        const statusBadge = file.status === 'pending'
-            ? `<span class="inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700">${file.status}</span>
-               <div class="progress-mini"><div class="progress-mini-fill"></div></div>`
-            : `<span class="inline-flex items-center rounded-full ${file.status === 'uploaded' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-600'} px-3 py-1 text-xs font-semibold">${file.status}</span>`;
-        const localBadge = file.local_deleted
-            ? `<span class="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Local Removed</span>`
-            : `<span class="inline-flex items-center rounded-full bg-indigo-100 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-indigo-600">Stored</span>`;
-        const statusContent = `
-            <div class="flex flex-col gap-1 text-[13px]">
-                ${statusBadge}
-                <div class="flex gap-2">${localBadge}</div>
-            </div>
-        `;
-        const verifyButton = file.local_deleted
-            ? `<button disabled class="inline-flex items-center rounded-lg bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-300">Verify</button>`
-            : `<button onclick="verifyFile(${file.id})" class="inline-flex items-center rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-200">Verify</button>`;
-
-        return `
-            <tr class="border-b border-slate-100 text-sm text-slate-600">
-                <td class="px-4 py-3 font-semibold text-slate-700">${file.filename}</td>
-                <td class="px-4 py-3 font-mono text-xs text-slate-500">${file.chat_id}</td>
-                <td class="px-4 py-3">${file.chat_name || '-'}</td>
-                <td class="px-4 py-3">${statusContent}</td>
-                <td class="px-4 py-3 text-xs text-slate-400">${date}</td>
-                <td class="px-4 py-3">
-                    <div class="flex flex-wrap gap-2">
-                        ${verifyButton}
-                        <button onclick="deleteFile(${file.id})" class="inline-flex items-center rounded-lg bg-rose-100 px-3 py-1.5 text-xs font-semibold text-rose-600 transition hover:bg-rose-200">Delete</button>
-                    </div>
-                </td>
-            </tr>
-        `;
-    }).join('');
-
-    filesList.innerHTML = `
-        <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-slate-100">
-                <thead class="bg-slate-50 text-xs font-semibold uppercase tracking-wider text-slate-500">
-                    <tr>
-                        <th class="px-4 py-3 text-left">File Name</th>
-                        <th class="px-4 py-3 text-left">Chat ID</th>
-                        <th class="px-4 py-3 text-left">Chat Name</th>
-                        <th class="px-4 py-3 text-left">Status</th>
-                        <th class="px-4 py-3 text-left">Date</th>
-                        <th class="px-4 py-3 text-left">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>${rows}</tbody>
-            </table>
-        </div>
-    `;
 }
 
 // Chat Mappings
@@ -620,12 +631,23 @@ async function loadChatMappings() {
         const response = await fetch(`${API_BASE}/chat-mappings`);
         const mappings = await response.json();
 
-        if (!mappings.length) {
+        chatMappingsData = Array.isArray(mappings) ? mappings : [];
+        chatMappingByChatId.clear();
+        chatMappingsData.forEach(mapping => {
+            if (mapping && typeof mapping.chat_id !== 'undefined') {
+                chatMappingByChatId.set(mapping.chat_id, mapping);
+            }
+        });
+
+        if (!chatMappingsData.length) {
             chatMappingsList.innerHTML = '<p class="p-4 text-sm text-slate-500">No chat mappings found.</p>';
-            return;
+        } else {
+            renderChatMappingsTable(chatMappingsData);
         }
 
-        renderChatMappingsTable(mappings);
+        if (allFiles.length) {
+            renderFilesView({ keepPage: true });
+        }
     } catch (error) {
         console.error('Error loading chat mappings:', error);
         chatMappingsList.innerHTML = '<p class="p-4 text-sm text-rose-500">Error loading chat mappings. Please try again.</p>';
@@ -634,39 +656,296 @@ async function loadChatMappings() {
 
 function renderChatMappingsTable(mappings) {
     mappingCache.clear();
-    const rows = mappings.map(mapping => {
+    const mappingCards = mappings.map(mapping => {
         mappingCache.set(mapping.id, mapping);
-        const date = new Date(mapping.created_at).toLocaleString();
+        const date = formatDateTime(mapping.updated_at || mapping.created_at);
+        const filesMapped = allFiles.filter(file => file.chat_id === mapping.chat_id).length;
         return `
-            <tr class="border-b border-slate-100 text-sm text-slate-600">
-                <td class="px-4 py-3 font-mono text-xs text-slate-500">${mapping.chat_id}</td>
-                <td class="px-4 py-3 font-semibold text-slate-700">${mapping.chat_name}</td>
-                <td class="px-4 py-3 text-xs text-slate-400">${date}</td>
-                <td class="px-4 py-3">
-                    <div class="flex gap-2">
-                        <button onclick="editMapping(${mapping.id})" class="inline-flex items-center rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-200">Edit</button>
-                        <button onclick="deleteMapping(${mapping.id})" class="inline-flex items-center rounded-lg bg-rose-100 px-3 py-1.5 text-xs font-semibold text-rose-600 transition hover:bg-rose-200">Delete</button>
+            <div class="flex flex-col gap-4 rounded-2xl border border-slate-100 bg-white p-5 shadow-sm shadow-slate-200/40 transition hover:-translate-y-1 hover:shadow-lg">
+                <div class="flex items-start justify-between gap-3">
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-wide text-indigo-500">Chat Mapping</p>
+                        <h4 class="mt-1 text-base font-semibold text-slate-900">${escapeHtml(mapping.chat_name)}</h4>
                     </div>
-                </td>
-            </tr>
+                    <span class="rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-600">${filesMapped} file${filesMapped === 1 ? '' : 's'}</span>
+                </div>
+                <dl class="grid gap-2 text-sm text-slate-600">
+                    <div class="flex items-center justify-between gap-3">
+                        <dt class="text-slate-500">Chat ID</dt>
+                        <dd class="font-mono text-xs text-slate-500">${escapeHtml(String(mapping.chat_id))}</dd>
+                    </div>
+                    <div class="flex items-center justify-between gap-3">
+                        <dt class="text-slate-500">Updated</dt>
+                        <dd class="text-xs text-slate-400">${escapeHtml(date)}</dd>
+                    </div>
+                </dl>
+                <div class="flex flex-wrap gap-2">
+                    <button onclick="editMapping(${mapping.id})" class="inline-flex items-center rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-200">Edit</button>
+                    <button onclick="deleteMapping(${mapping.id})" class="inline-flex items-center rounded-lg bg-rose-100 px-3 py-1.5 text-xs font-semibold text-rose-600 transition hover:bg-rose-200">Delete</button>
+                </div>
+            </div>
         `;
     }).join('');
 
     chatMappingsList.innerHTML = `
-        <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-slate-100">
-                <thead class="bg-slate-50 text-xs font-semibold uppercase tracking-wider text-slate-500">
-                    <tr>
-                        <th class="px-4 py-3 text-left">Chat ID</th>
-                        <th class="px-4 py-3 text-left">Chat Name</th>
-                        <th class="px-4 py-3 text-left">Date</th>
-                        <th class="px-4 py-3 text-left">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>${rows}</tbody>
-            </table>
+        <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            ${mappingCards}
         </div>
     `;
+}
+
+function handleApplyFileFilters(event) {
+    if (event) {
+        event.preventDefault();
+    }
+    fileFilters.chatId = filterChatIdInput?.value.trim() || '';
+    fileFilters.startDate = filterStartDateInput?.value || '';
+    fileFilters.endDate = filterEndDateInput?.value || '';
+    applyFileFilters({ resetPage: true });
+}
+
+function handleResetFileFilters(event) {
+    if (event) {
+        event.preventDefault();
+    }
+    if (filterChatIdInput) {
+        filterChatIdInput.value = '';
+    }
+    if (filterStartDateInput) {
+        filterStartDateInput.value = '';
+    }
+    if (filterEndDateInput) {
+        filterEndDateInput.value = '';
+    }
+    fileFilters.chatId = '';
+    fileFilters.startDate = '';
+    fileFilters.endDate = '';
+    applyFileFilters({ resetPage: true });
+}
+
+function handleFileFilterKeydown(event) {
+    if (event.key === 'Enter') {
+        event.preventDefault();
+        handleApplyFileFilters();
+    }
+}
+
+function handleFilesPaginationClick(event) {
+    const target = event.target.closest('[data-pagination]');
+    if (!target) {
+        return;
+    }
+    event.preventDefault();
+    const totalPages = Math.max(1, Math.ceil(filteredFiles.length / FILES_PAGE_SIZE));
+    const action = target.dataset.pagination;
+
+    if (action === 'prev' && filesCurrentPage > 1) {
+        filesCurrentPage -= 1;
+        renderFilesView();
+        return;
+    }
+
+    if (action === 'next' && filesCurrentPage < totalPages) {
+        filesCurrentPage += 1;
+        renderFilesView();
+        return;
+    }
+
+    if (action === 'page') {
+        const page = Number(target.dataset.page);
+        if (!Number.isNaN(page) && page >= 1 && page <= totalPages && page !== filesCurrentPage) {
+            filesCurrentPage = page;
+            renderFilesView();
+        }
+    }
+}
+
+function applyFileFilters({ resetPage = false } = {}) {
+    if (resetPage) {
+        filesCurrentPage = 1;
+    }
+    if (!Array.isArray(allFiles)) {
+        allFiles = [];
+    }
+
+    filteredFiles = allFiles.filter(file => {
+        if (!file) {
+            return false;
+        }
+
+        const chatIdMatch = fileFilters.chatId
+            ? String(file.chat_id || '').toLowerCase().includes(fileFilters.chatId.toLowerCase())
+            : true;
+
+        const fileDate = file.created_at ? new Date(file.created_at) : null;
+        const startDate = fileFilters.startDate ? new Date(fileFilters.startDate) : null;
+        const endDate = fileFilters.endDate ? new Date(fileFilters.endDate) : null;
+
+        let dateMatch = true;
+        if (startDate && fileDate) {
+            startDate.setHours(0, 0, 0, 0);
+            dateMatch = dateMatch && fileDate >= startDate;
+        }
+        if (endDate && fileDate) {
+            endDate.setHours(23, 59, 59, 999);
+            dateMatch = dateMatch && fileDate <= endDate;
+        }
+
+        return chatIdMatch && dateMatch;
+    });
+
+    updateStatusChart(filteredFiles);
+    renderFilesView({ keepPage: !resetPage });
+}
+
+function renderFilesView({ resetPage = false, keepPage = false } = {}) {
+    if (!filesList) {
+        return;
+    }
+
+    if (resetPage) {
+        filesCurrentPage = 1;
+    }
+
+    if (!filteredFiles.length) {
+        filesList.innerHTML = `
+            <div class="flex flex-col items-center justify-center gap-2 p-6 text-center text-sm text-slate-500">
+                <span class="text-base font-semibold text-slate-700">ไม่พบข้อมูล</span>
+                <p>ลองปรับตัวกรอง หรือรีเซ็ตตัวกรองเพื่อดูข้อมูลทั้งหมดอีกครั้ง</p>
+            </div>
+        `;
+        return;
+    }
+
+    const totalPages = Math.max(1, Math.ceil(filteredFiles.length / FILES_PAGE_SIZE));
+    if (!keepPage || filesCurrentPage > totalPages) {
+        filesCurrentPage = Math.min(filesCurrentPage, totalPages);
+    }
+
+    const startIndex = (filesCurrentPage - 1) * FILES_PAGE_SIZE;
+    const currentItems = filteredFiles.slice(startIndex, startIndex + FILES_PAGE_SIZE);
+
+    const cardsHtml = currentItems.map(file => renderFileCard(file)).join('');
+
+    filesList.innerHTML = `
+        <div class="space-y-6">
+            <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                ${cardsHtml}
+            </div>
+            ${renderPaginationControls(totalPages, filteredFiles.length)}
+        </div>
+    `;
+}
+
+function renderFileCard(file) {
+    const fileDate = formatDateTime(file.created_at);
+    const statusBadge = buildFileStatusBadge(file);
+    const storageBadge = buildStorageBadge(file);
+    const mapping = chatMappingByChatId.get(file.chat_id);
+    const mappingName = file.chat_name || mapping?.chat_name || 'ไม่มีการตั้งชื่อ';
+    const hasMapping = Boolean(mapping || file.chat_name);
+
+    const verifyButton = file.local_deleted
+        ? `<button disabled class="inline-flex items-center rounded-lg bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-300">Verify</button>`
+        : `<button onclick="verifyFile(${file.id})" class="inline-flex items-center rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-200">Verify</button>`;
+
+    return `
+        <article class="flex h-full flex-col justify-between gap-4 rounded-2xl border border-slate-100 bg-white p-5 shadow-sm shadow-slate-200/40 transition hover:-translate-y-1 hover:shadow-lg">
+            <div class="space-y-4">
+                <div class="flex items-start justify-between gap-3">
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">ไฟล์</p>
+                        <h4 class="mt-1 text-base font-semibold text-slate-900">${escapeHtml(file.filename)}</h4>
+                        <p class="text-xs text-slate-500">${escapeHtml(fileDate)}</p>
+                    </div>
+                    ${statusBadge}
+                </div>
+                <dl class="space-y-3 text-sm text-slate-600">
+                    <div class="flex items-center justify-between gap-3">
+                        <dt class="text-slate-500">Chat ID</dt>
+                        <dd class="font-mono text-xs text-slate-500">${escapeHtml(String(file.chat_id || ''))}</dd>
+                    </div>
+                    <div class="flex items-center justify-between gap-3">
+                        <dt class="text-slate-500">Chat Mapping</dt>
+                        <dd class="flex items-center gap-2">
+                            <span class="rounded-full ${hasMapping ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'} px-3 py-1 text-xs font-semibold">${hasMapping ? 'Mapped' : 'Not mapped'}</span>
+                            <span class="text-xs font-medium text-slate-600">${escapeHtml(mappingName)}</span>
+                        </dd>
+                    </div>
+                    <div class="flex items-center justify-between gap-3">
+                        <dt class="text-slate-500">สถานะไฟล์บนเซิร์ฟเวอร์</dt>
+                        <dd>${storageBadge}</dd>
+                    </div>
+                </dl>
+            </div>
+            <div class="flex flex-wrap gap-2">
+                ${verifyButton}
+                <button onclick="deleteFile(${file.id})" class="inline-flex items-center rounded-lg bg-rose-100 px-3 py-1.5 text-xs font-semibold text-rose-600 transition hover:bg-rose-200">Delete</button>
+            </div>
+        </article>
+    `;
+}
+
+function renderPaginationControls(totalPages, totalItems) {
+    if (totalPages <= 1) {
+        return `
+            <div class="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-4 py-3 text-xs font-semibold text-slate-600">
+                <span>ทั้งหมด ${totalItems} รายการ</span>
+            </div>
+        `;
+    }
+
+    const visiblePages = 5;
+    let startPage = Math.max(1, filesCurrentPage - 2);
+    let endPage = Math.min(totalPages, startPage + visiblePages - 1);
+    startPage = Math.max(1, endPage - visiblePages + 1);
+
+    const pageButtons = [];
+    for (let page = startPage; page <= endPage; page += 1) {
+        pageButtons.push(`
+            <button data-pagination="page" data-page="${page}" class="inline-flex items-center justify-center rounded-lg px-3 py-1.5 text-xs font-semibold transition ${page === filesCurrentPage ? 'bg-slate-900 text-white shadow-sm shadow-slate-300/50' : 'bg-white text-slate-600 hover:bg-slate-100'}">
+                หน้า ${page}
+            </button>
+        `);
+    }
+
+    return `
+        <div class="flex flex-col gap-3 rounded-2xl border border-slate-100 bg-white p-4 text-xs font-semibold text-slate-600 shadow-sm shadow-slate-200/40 md:flex-row md:items-center md:justify-between">
+            <span>แสดง ${((filesCurrentPage - 1) * FILES_PAGE_SIZE) + 1}-${Math.min(filesCurrentPage * FILES_PAGE_SIZE, totalItems)} จาก ${totalItems} รายการ</span>
+            <div class="flex flex-wrap items-center gap-2">
+                <button data-pagination="prev" class="inline-flex items-center justify-center rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 ${filesCurrentPage === 1 ? 'pointer-events-none opacity-40' : ''}">ก่อนหน้า</button>
+                ${pageButtons.join('')}
+                <button data-pagination="next" class="inline-flex items-center justify-center rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 ${filesCurrentPage === totalPages ? 'pointer-events-none opacity-40' : ''}">ถัดไป</button>
+            </div>
+        </div>
+    `;
+}
+
+function buildFileStatusBadge(file) {
+    const status = file.status || 'unknown';
+    if (status === 'pending') {
+        return `
+            <div class="flex flex-col items-end gap-2">
+                <span class="inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-amber-700">${escapeHtml(status)}</span>
+                <div class="progress-mini"><div class="progress-mini-fill"></div></div>
+            </div>
+        `;
+    }
+
+    const badgeClass = status === 'uploaded'
+        ? 'bg-emerald-100 text-emerald-700'
+        : 'bg-rose-100 text-rose-600';
+
+    return `
+        <span class="inline-flex items-center rounded-full ${badgeClass} px-3 py-1 text-xs font-semibold uppercase tracking-wide">${escapeHtml(status)}</span>
+    `;
+}
+
+function buildStorageBadge(file) {
+    if (file.local_deleted) {
+        return `<span class="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Local Removed</span>`;
+    }
+    return `<span class="inline-flex items-center rounded-full bg-indigo-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-indigo-600">Stored</span>`;
 }
 
 async function setChatName(chatId, chatName) {
