@@ -14,33 +14,23 @@ const phoneNumberInput = document.getElementById('phone-number');
 const codeSection = document.getElementById('code-section');
 const codeInput = document.getElementById('code');
 const filesList = document.getElementById('files-list');
-const chatMappingsList = document.getElementById('chat-mappings-list');
 const refreshFilesBtn = document.getElementById('refresh-files');
-const refreshMappingsBtn = document.getElementById('refresh-mappings');
 const logoutBtn = document.getElementById('logout-btn');
 const adminLogoutBtn = document.getElementById('admin-logout-btn');
 const uploadProgressChartElement = document.getElementById('upload-progress-chart');
 const statusChartElement = document.getElementById('status-chart');
-const mappingForm = document.getElementById('chat-mapping-form');
-const mappingMessage = document.getElementById('mapping-message');
-const mappingChatIdInput = document.getElementById('mapping-chat-id');
-const mappingChatNameInput = document.getElementById('mapping-chat-name');
-const mappingSubmitBtn = document.getElementById('mapping-submit-btn');
-const cancelMappingBtn = document.getElementById('cancel-mapping-btn');
 const loginMessage = document.getElementById('login-message');
 const filterChatIdInput = document.getElementById('file-filter-chat-id');
 const filterStartDateInput = document.getElementById('file-filter-start-date');
 const filterEndDateInput = document.getElementById('file-filter-end-date');
 const filterApplyBtn = document.getElementById('file-filter-apply');
 const filterResetBtn = document.getElementById('file-filter-reset');
+const mappingSummaryCount = document.getElementById('chat-mapping-count');
+const mappingSummaryUpdated = document.getElementById('chat-mapping-updated');
 
 let uploadProgressChart;
 let statusChart;
 let chartsInitialized = false;
-const mappingCache = new Map();
-let isMappingEditMode = false;
-let editingMappingId = null;
-let originalMappingChatId = null;
 let allFiles = [];
 let filteredFiles = [];
 let chatMappingsData = [];
@@ -79,12 +69,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (adminLogoutBtn) {
         adminLogoutBtn.addEventListener('click', handleAdminLogout);
     }
-    if (mappingForm) {
-        mappingForm.addEventListener('submit', handleCreateMapping);
-    }
-    if (cancelMappingBtn) {
-        cancelMappingBtn.addEventListener('click', exitMappingEditMode);
-    }
     checkExistingSession();
 });
 
@@ -110,7 +94,6 @@ function showLogin() {
         updateUploadProgressChart(0);
         updateStatusChart([]);
     }
-    clearMappingMessage();
 }
 
 function showDashboard() {
@@ -220,14 +203,6 @@ function setupDashboardEventListeners() {
     if (refreshFilesBtn && !refreshFilesBtn.dataset.listenerAttached) {
         refreshFilesBtn.addEventListener('click', loadFiles);
         refreshFilesBtn.dataset.listenerAttached = 'true';
-    }
-    if (refreshMappingsBtn && !refreshMappingsBtn.dataset.listenerAttached) {
-        refreshMappingsBtn.addEventListener('click', () => {
-            clearMappingMessage();
-            exitMappingEditMode();
-            loadChatMappings();
-        });
-        refreshMappingsBtn.dataset.listenerAttached = 'true';
     }
     if (filterApplyBtn && !filterApplyBtn.dataset.listenerAttached) {
         filterApplyBtn.addEventListener('click', handleApplyFileFilters);
@@ -414,57 +389,6 @@ function showMessage(text, type = 'info') {
     }, 4000);
 }
 
-function showMappingMessage(text, type = 'info') {
-    if (!mappingMessage) return;
-    mappingMessage.className = toastStyles[type] || toastStyles.info;
-    mappingMessage.textContent = text;
-    mappingMessage.style.display = 'block';
-}
-
-function clearMappingMessage() {
-    if (!mappingMessage) return;
-    mappingMessage.style.display = 'none';
-}
-
-function exitMappingEditMode() {
-    isMappingEditMode = false;
-    editingMappingId = null;
-    originalMappingChatId = null;
-    mappingForm?.reset();
-    if (mappingChatIdInput) {
-        mappingChatIdInput.readOnly = false;
-        mappingChatIdInput.classList.remove('bg-slate-100');
-    }
-    if (mappingSubmitBtn) {
-        mappingSubmitBtn.textContent = 'Add Mapping';
-    }
-    if (cancelMappingBtn) {
-        cancelMappingBtn.classList.add('hidden');
-    }
-}
-
-function enterMappingEditMode(mapping) {
-    isMappingEditMode = true;
-    editingMappingId = mapping.id;
-    originalMappingChatId = mapping.chat_id;
-
-    if (mappingChatIdInput) {
-        mappingChatIdInput.value = mapping.chat_id;
-        mappingChatIdInput.readOnly = true;
-        mappingChatIdInput.classList.add('bg-slate-100');
-    }
-    if (mappingChatNameInput) {
-        mappingChatNameInput.value = mapping.chat_name;
-    }
-    if (mappingSubmitBtn) {
-        mappingSubmitBtn.textContent = 'Update Mapping';
-    }
-    if (cancelMappingBtn) {
-        cancelMappingBtn.classList.remove('hidden');
-    }
-    clearMappingMessage();
-}
-
 function formatBytes(bytes) {
     if (!bytes) return '0 B';
     const units = ['B', 'KB', 'MB', 'GB', 'TB'];
@@ -535,59 +459,55 @@ async function loadChatMappings() {
             }
         });
 
-        if (!chatMappingsData.length) {
-            chatMappingsList.innerHTML = '<p class="p-4 text-sm text-slate-500">No chat mappings found.</p>';
-        } else {
-            renderChatMappingsTable(chatMappingsData);
-        }
+        updateMappingSummary();
 
         if (allFiles.length) {
             renderFilesView({ keepPage: true });
         }
     } catch (error) {
         console.error('Error loading chat mappings:', error);
-        chatMappingsList.innerHTML = '<p class="p-4 text-sm text-rose-500">Error loading chat mappings. Please try again.</p>';
+        chatMappingsData = [];
+        chatMappingByChatId.clear();
+        updateMappingSummary(true);
     }
 }
 
-function renderChatMappingsTable(mappings) {
-    mappingCache.clear();
-    const mappingCards = mappings.map(mapping => {
-        mappingCache.set(mapping.id, mapping);
-        const date = formatDateTime(mapping.updated_at || mapping.created_at);
-        const filesMapped = allFiles.filter(file => file.chat_id === mapping.chat_id).length;
-        return `
-            <div class="flex flex-col gap-4 rounded-2xl border border-slate-100 bg-white p-5 shadow-sm shadow-slate-200/40 transition hover:-translate-y-1 hover:shadow-lg">
-                <div class="flex items-start justify-between gap-3">
-                    <div>
-                        <p class="text-xs font-semibold uppercase tracking-wide text-indigo-500">Chat Mapping</p>
-                        <h4 class="mt-1 text-base font-semibold text-slate-900">${escapeHtml(mapping.chat_name)}</h4>
-                    </div>
-                    <span class="rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-600">${filesMapped} file${filesMapped === 1 ? '' : 's'}</span>
-                </div>
-                <dl class="grid gap-2 text-sm text-slate-600">
-                    <div class="flex items-center justify-between gap-3">
-                        <dt class="text-slate-500">Chat ID</dt>
-                        <dd class="font-mono text-xs text-slate-500">${escapeHtml(String(mapping.chat_id))}</dd>
-                    </div>
-                    <div class="flex items-center justify-between gap-3">
-                        <dt class="text-slate-500">Updated</dt>
-                        <dd class="text-xs text-slate-400">${escapeHtml(date)}</dd>
-                    </div>
-                </dl>
-                <div class="flex flex-wrap gap-2">
-                    <button onclick="editMapping(${mapping.id})" class="inline-flex items-center rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-200">Edit</button>
-                    <button onclick="deleteMapping(${mapping.id})" class="inline-flex items-center rounded-lg bg-rose-100 px-3 py-1.5 text-xs font-semibold text-rose-600 transition hover:bg-rose-200">Delete</button>
-                </div>
-            </div>
-        `;
-    }).join('');
+function updateMappingSummary(hasError = false) {
+    if (!mappingSummaryCount && !mappingSummaryUpdated) {
+        return;
+    }
 
-    chatMappingsList.innerHTML = `
-        <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            ${mappingCards}
-        </div>
-    `;
+    if (hasError) {
+        if (mappingSummaryCount) {
+            mappingSummaryCount.textContent = '-';
+        }
+        if (mappingSummaryUpdated) {
+            mappingSummaryUpdated.textContent = 'ไม่สามารถดึงข้อมูลได้';
+        }
+        return;
+    }
+
+    const totalMappings = chatMappingsData.length;
+    if (mappingSummaryCount) {
+        mappingSummaryCount.textContent = totalMappings ? totalMappings.toString() : '0';
+    }
+
+    if (mappingSummaryUpdated) {
+        if (!totalMappings) {
+            mappingSummaryUpdated.textContent = '-';
+            return;
+        }
+        const latest = chatMappingsData.reduce((latestMapping, current) => {
+            const currentTimestamp = new Date(current.updated_at || current.created_at || 0).getTime();
+            const latestTimestamp = latestMapping
+                ? new Date(latestMapping.updated_at || latestMapping.created_at || 0).getTime()
+                : 0;
+            return currentTimestamp > latestTimestamp ? current : latestMapping;
+        }, null);
+        mappingSummaryUpdated.textContent = latest
+            ? formatDateTime(latest.updated_at || latest.created_at)
+            : '-';
+    }
 }
 
 function handleApplyFileFilters(event) {
@@ -867,64 +787,6 @@ function buildStorageBadge(file) {
     return `<span class="inline-flex w-fit items-center rounded-full bg-indigo-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-indigo-600">Stored</span>`;
 }
 
-async function setChatName(chatId, chatName) {
-    const response = await fetch(`${API_BASE}/chat-name`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chat_id: chatId, chat_name: chatName })
-    });
-
-    if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to set chat name');
-    }
-
-    return response.json();
-}
-
-async function handleCreateMapping(event) {
-    event.preventDefault();
-
-    const chatId = mappingChatIdInput.value.trim();
-    const chatName = mappingChatNameInput.value.trim();
-
-    if (!chatId || !chatName) {
-        showMappingMessage('Please fill in both fields.', 'error');
-        return;
-    }
-
-    try {
-        await setChatName(chatId, chatName);
-        if (isMappingEditMode && editingMappingId) {
-            showMappingMessage('Chat mapping updated successfully.', 'success');
-        } else {
-            showMappingMessage('Chat mapping saved successfully.', 'success');
-        }
-        exitMappingEditMode();
-        mappingForm.reset();
-        loadChatMappings();
-    } catch (error) {
-        showMappingMessage(`Failed to save mapping: ${error.message}`, 'error');
-    }
-}
-
-async function deleteMappingById(id, showAlert = true) {
-    const response = await fetch(`${API_BASE}/chat-mappings/${id}`, {
-        method: 'DELETE'
-    });
-    if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to delete mapping');
-    }
-    if (showAlert) {
-        showMappingMessage('Chat mapping deleted successfully.', 'success');
-    }
-    if (isMappingEditMode && editingMappingId === id) {
-        exitMappingEditMode();
-    }
-    loadChatMappings();
-}
-
 // Public helpers
 window.verifyFile = async function(fileId) {
     try {
@@ -962,27 +824,6 @@ window.deleteFile = async function(fileId) {
     } catch (error) {
         console.error('Error deleting file:', error);
         alert(`Failed to delete file: ${error.message}`);
-    }
-};
-
-window.editMapping = function(id) {
-    const mapping = mappingCache.get(id);
-    if (!mapping) {
-        showMappingMessage('Mapping not found.', 'error');
-        return;
-    }
-    enterMappingEditMode(mapping);
-};
-
-window.deleteMapping = async function(id) {
-    if (!confirm('Are you sure you want to delete this mapping?')) {
-        return;
-    }
-    try {
-        await deleteMappingById(id);
-    } catch (error) {
-        console.error('Error deleting mapping:', error);
-        showMappingMessage(`Failed to delete mapping: ${error.message}`, 'error');
     }
 };
 

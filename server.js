@@ -5,6 +5,7 @@ const dotenv = require('dotenv');
 const session = require('express-session');
 const apiRoutes = require('./src/routes/apiRoutes');
 const db = require('./src/config/database');
+const SQLiteSessionStore = require('./src/session/sqliteSessionStore');
 
 // Load environment variables
 dotenv.config();
@@ -15,6 +16,7 @@ const HOST = process.env.HOST || '0.0.0.0';
 const SESSION_SECRET = process.env.SESSION_SECRET || 'change_me_in_env';
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || '';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
+const SESSION_TTL_MS = Number(process.env.SESSION_TTL_MS) || (24 * 60 * 60 * 1000);
 
 if (!ADMIN_USERNAME || !ADMIN_PASSWORD) {
   console.warn('Warning: ADMIN_USERNAME or ADMIN_PASSWORD is not configured. Dashboard login will be unavailable.');
@@ -28,7 +30,13 @@ if (SESSION_SECRET === 'change_me_in_env') {
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+const sessionStore = new SQLiteSessionStore({
+  db,
+  ttl: SESSION_TTL_MS
+});
+
 app.use(session({
+  store: sessionStore,
   secret: SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
@@ -77,6 +85,9 @@ app.post('/auth/login', (req, res) => {
   if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
     req.session.isAuthenticated = true;
     req.session.username = username;
+    req.session.loginAt = new Date().toISOString();
+    req.session.ipAddress = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket?.remoteAddress || null;
+    req.session.userAgent = req.get('user-agent') || '';
     return res.redirect('/');
   }
 
@@ -112,6 +123,10 @@ app.get('/docs.html', ensureAuthenticated, (req, res) => {
   res.sendFile(path.join(__dirname, 'src/public/docs.html'));
 });
 
+app.get('/chat-mappings.html', ensureAuthenticated, (req, res) => {
+  res.sendFile(path.join(__dirname, 'src/public/chat-mappings.html'));
+});
+
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });
@@ -141,6 +156,7 @@ app.listen(PORT, HOST, () => {
 // Graceful shutdown
 process.on('SIGINT', () => {
   console.log('Shutting down gracefully...');
+  sessionStore.close();
   db.close((err) => {
     if (err) {
       console.error('Error closing database:', err);

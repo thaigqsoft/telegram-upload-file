@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Mappings | Telegram Upload Studio</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-100 text-slate-800">
+    <div class="mx-auto flex min-h-screen max-w-6xl flex-col px-4 py-10 sm:px-6 lg:px-8">
+        <header class="mb-10 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+                <h1 class="text-3xl font-bold tracking-tight text-slate-900">Chat Mappings</h1>
+                <p class="mt-1 text-sm text-slate-600">ตั้งชื่อห้องแชท Telegram ให้อ่านง่าย จัดการข้อมูลได้อย่างรวดเร็ว</p>
+            </div>
+            <nav class="flex flex-wrap items-center justify-start gap-2 sm:justify-end">
+                <a href="/" class="inline-flex items-center gap-2 rounded-xl border border-transparent bg-white px-4 py-2 text-sm font-semibold text-slate-600 shadow-sm transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-200 focus:ring-offset-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="m10.5 6 6 6-6 6"/>
+                    </svg>
+                    กลับสู่ Dashboard
+                </a>
+                <a href="/upload.html" class="inline-flex items-center gap-2 rounded-xl border border-transparent bg-emerald-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4.5v15m7.5-7.5h-15"/>
+                    </svg>
+                    Upload A File
+                </a>
+                <a href="/docs.html" target="_blank" class="inline-flex items-center gap-2 rounded-xl border border-transparent bg-sky-100 px-4 py-2 text-sm font-semibold text-sky-700 shadow-sm transition hover:bg-sky-200 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="m13.5 4.5 6 6m0 0-6 6m6-6h-15"/>
+                    </svg>
+                    API &amp; User Guide
+                </a>
+                <button id="mapping-logout-btn" class="inline-flex hidden items-center gap-2 rounded-xl border border-transparent bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:ring-offset-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15.75 5.25v-1.5A1.5 1.5 0 0 0 14.25 2.25h-8.5A1.5 1.5 0 0 0 4.25 3.75v16.5a1.5 1.5 0 0 0 1.5 1.5h8.5a1.5 1.5 0 0 0 1.5-1.5v-1.5m3-5.25H9.75m6 0 3-3m-3 3 3 3"/>
+                    </svg>
+                    ล้างการเชื่อมต่อ Telegram
+                </button>
+                <button id="mapping-admin-logout-btn" class="inline-flex items-center gap-2 rounded-xl border border-transparent bg-white px-4 py-2 text-sm font-semibold text-slate-600 shadow-sm transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-200 focus:ring-offset-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-9A2.25 2.25 0 0 0 2.25 5.25v13.5A2.25 2.25 0 0 0 4.5 21h9a2.25 2.25 0 0 0 2.25-2.25V15m3 3 3-3m0 0-3-3m3 3H9"/>
+                    </svg>
+                    ออกจากระบบผู้ดูแล
+                </button>
+            </nav>
+        </header>
+
+        <main class="flex-1 space-y-8">
+            <section class="rounded-2xl bg-white p-6 shadow-lg shadow-slate-200/60">
+                <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                    <div>
+                        <h2 class="text-lg font-semibold text-slate-900">สร้างหรือแก้ไข Chat Mapping</h2>
+                        <p class="text-sm text-slate-500">ตั้งชื่อแชทให้จำง่าย ระบบจะใช้ชื่อนี้ทุกครั้งที่อัปโหลดไฟล์</p>
+                    </div>
+                    <button id="refresh-mappings" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-50">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16.023 9.348h4.5v-4.5m0 0-2.621 2.621A8.25 8.25 0 1 0 19.5 12.75"/>
+                        </svg>
+                        โหลดข้อมูลล่าสุด
+                    </button>
+                </div>
+                <form id="chat-mapping-form" class="mt-6 grid gap-4 lg:grid-cols-7">
+                    <div class="lg:col-span-3">
+                        <label for="mapping-chat-id" class="mb-2 block text-sm font-medium text-slate-600">Chat ID</label>
+                        <input id="mapping-chat-id" name="chat_id" type="text" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 shadow-sm focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/40" required>
+                    </div>
+                    <div class="lg:col-span-3">
+                        <label for="mapping-chat-name" class="mb-2 block text-sm font-medium text-slate-600">Chat Name</label>
+                        <input id="mapping-chat-name" name="chat_name" type="text" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 shadow-sm focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/40" required>
+                    </div>
+                    <div class="flex items-end gap-2 lg:col-span-1">
+                        <button id="mapping-submit-btn" type="submit" class="inline-flex w-full items-center justify-center rounded-xl bg-violet-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2">Add Mapping</button>
+                        <button id="cancel-mapping-btn" type="button" class="hidden rounded-xl bg-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-300">Cancel</button>
+                    </div>
+                </form>
+                <div id="mapping-message" class="mt-4 hidden"></div>
+            </section>
+
+            <section class="rounded-2xl bg-white p-6 shadow-lg shadow-slate-200/60">
+                <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <h2 class="text-lg font-semibold text-slate-900">รายการ Chat Mappings</h2>
+                        <p class="text-sm text-slate-500">เลือกแก้ไขหรือลบ Mapping ที่ไม่จำเป็นได้ทันที</p>
+                    </div>
+                    <div class="text-xs font-semibold uppercase tracking-wide text-slate-400" id="chat-mapping-stats">-</div>
+                </div>
+                <div class="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3" id="chat-mappings-list">
+                    <p class="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">Loading chat mappings...</p>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="js/chat-mappings.js"></script>
+</body>
+</html>
+
