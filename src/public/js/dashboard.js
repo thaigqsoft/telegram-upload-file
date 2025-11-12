@@ -24,6 +24,7 @@ const mappingStatsTotalBadge = document.getElementById('mapping-stats-total');
 const mappingStatsSummary = document.getElementById('mapping-stats-summary');
 const loginMessage = document.getElementById('login-message');
 const filterChatIdInput = document.getElementById('file-filter-chat-id');
+const filterChatMappingSelect = document.getElementById('file-filter-chat-mapping');
 const filterStartDateInput = document.getElementById('file-filter-start-date');
 const filterEndDateInput = document.getElementById('file-filter-end-date');
 const filterApplyBtn = document.getElementById('file-filter-apply');
@@ -41,6 +42,7 @@ const FILES_PAGE_SIZE = 50;
 const chatMappingByChatId = new Map();
 const fileFilters = {
     chatId: '',
+    chatMapping: '',
     startDate: '',
     endDate: ''
 };
@@ -217,6 +219,10 @@ function setupDashboardEventListeners() {
     if (filesList && !filesList.dataset.paginationListenerAttached) {
         filesList.addEventListener('click', handleFilesPaginationClick);
         filesList.dataset.paginationListenerAttached = 'true';
+    }
+    if (filterChatMappingSelect && !filterChatMappingSelect.dataset.changeListenerAttached) {
+        filterChatMappingSelect.addEventListener('change', handleApplyFileFilters);
+        filterChatMappingSelect.dataset.changeListenerAttached = 'true';
     }
     if (filterChatIdInput && !filterChatIdInput.dataset.keyListenerAttached) {
         filterChatIdInput.addEventListener('keydown', handleFileFilterKeydown);
@@ -543,6 +549,10 @@ function resetMappingStatsUI() {
     if (mappingStatsTotalBadge) {
         mappingStatsTotalBadge.textContent = 'Total 0';
     }
+    if (filterChatMappingSelect) {
+        filterChatMappingSelect.innerHTML = '<option value="">-- ทั้งหมด --</option>';
+        filterChatMappingSelect.value = '';
+    }
     if (mappingStatsSummary) {
         mappingStatsSummary.innerHTML = `
             <div class="rounded-xl bg-slate-50 p-3 text-sm text-slate-600">
@@ -587,6 +597,22 @@ function updateMappingStats(hasError = false) {
     const unusedMappings = Math.max(totalMappings - usedMappings, 0);
     const unmappedChats = Math.max(usedChatIds.size - usedMappings, 0);
 
+    if (filterChatMappingSelect) {
+        const currentValue = filterChatMappingSelect.value;
+        const optionsHtml = ['<option value="">-- ทั้งหมด --</option>'].concat(
+            chatMappingsData.map(mapping => {
+                const value = escapeHtml(String(mapping.chat_id));
+                const selected = currentValue === String(mapping.chat_id) ? 'selected' : '';
+                const label = escapeHtml(mapping.chat_name || mapping.chat_id);
+                return `<option value="${value}" ${selected}>${label}</option>`;
+            })
+        ).join('');
+        filterChatMappingSelect.innerHTML = optionsHtml;
+        if (currentValue && filterChatMappingSelect.value !== currentValue) {
+            filterChatMappingSelect.value = currentValue;
+        }
+    }
+
     if (mappingStatsChart) {
         mappingStatsChart.updateSeries([
             usedMappings,
@@ -625,6 +651,7 @@ function handleApplyFileFilters(event) {
         event.preventDefault();
     }
     fileFilters.chatId = filterChatIdInput?.value.trim() || '';
+    fileFilters.chatMapping = filterChatMappingSelect?.value || '';
     fileFilters.startDate = filterStartDateInput?.value || '';
     fileFilters.endDate = filterEndDateInput?.value || '';
     applyFileFilters({ resetPage: true });
@@ -637,6 +664,9 @@ function handleResetFileFilters(event) {
     if (filterChatIdInput) {
         filterChatIdInput.value = '';
     }
+    if (filterChatMappingSelect) {
+        filterChatMappingSelect.value = '';
+    }
     if (filterStartDateInput) {
         filterStartDateInput.value = '';
     }
@@ -644,6 +674,7 @@ function handleResetFileFilters(event) {
         filterEndDateInput.value = '';
     }
     fileFilters.chatId = '';
+    fileFilters.chatMapping = '';
     fileFilters.startDate = '';
     fileFilters.endDate = '';
     applyFileFilters({ resetPage: true });
@@ -702,6 +733,9 @@ function applyFileFilters({ resetPage = false } = {}) {
         const chatIdMatch = fileFilters.chatId
             ? String(file.chat_id || '').toLowerCase().includes(fileFilters.chatId.toLowerCase())
             : true;
+        const mappingMatch = fileFilters.chatMapping
+            ? String(file.chat_id || '') === String(fileFilters.chatMapping)
+            : true;
 
         const fileDate = file.created_at ? new Date(file.created_at) : null;
         const startDate = fileFilters.startDate ? new Date(fileFilters.startDate) : null;
@@ -717,7 +751,7 @@ function applyFileFilters({ resetPage = false } = {}) {
             dateMatch = dateMatch && fileDate <= endDate;
         }
 
-        return chatIdMatch && dateMatch;
+        return chatIdMatch && mappingMatch && dateMatch;
     });
 
     updateStatusChart(filteredFiles);
