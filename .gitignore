@@ -1,6 +1,5 @@
 .DS_Store
 node_modules/
-uploads/
 database/*.db
 database/*.sqlite
 .env
@@ -13,3 +12,4 @@ yarn-debug.log*
 yarn-error.log*
 database/app.db
 node_modules/.package-lock.json
+uploads/*
